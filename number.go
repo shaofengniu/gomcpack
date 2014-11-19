@@ -1,5 +1,10 @@
 package gomcpack
 
+import (
+	"encoding/binary"
+	"math"
+)
+
 func Int8(b []byte) int8 {
 	return int8(b[0])
 }
@@ -86,4 +91,24 @@ func PutUint64(b []byte, v uint64) {
 	b[5] = byte(v >> 40)
 	b[6] = byte(v >> 48)
 	b[7] = byte(v >> 56)
+}
+
+func Float32(b []byte) float32 {
+	bits := binary.BigEndian.Uint32(b)
+	return math.Float32frombits(bits)
+}
+
+func PutFloat32(b []byte, v float32) {
+	bits := math.Float32bits(v)
+	binary.BigEndian.PutUint32(b, bits)
+}
+
+func Float64(b []byte) float64 {
+	bits := binary.BigEndian.Uint64(b)
+	return math.Float64frombits(bits)
+}
+
+func PutFloat64(b []byte, v float64) {
+	bits := math.Float64bits(v)
+	binary.BigEndian.PutUint64(b, bits)
 }
