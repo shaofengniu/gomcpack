@@ -248,8 +248,67 @@ func newMapEncoder(t reflect.Type) encoderFunc {
 	return nil
 }
 
+func encodeByteSlice(e *encodeState, k string, v reflect.Value) {
+
+}
+
+type sliceEncoder struct {
+	arrayEnc encoderFunc
+}
+
+func (se *sliceEncoder) encode(e *encodeState, k string, v reflect.Value) {
+	if v.IsNil() {
+		// TODO: encode nil
+		return
+	}
+	se.arrayEnc(e, k, v)
+}
+
 func newSliceEncoder(t reflect.Type) encoderFunc {
-	return nil
+	if t.Elem().Kind() == reflect.Uint8 {
+		return encodeByteSlice
+	}
+	enc := &sliceEncoder{newArrayEncoder(t)}
+	return enc.encode
+}
+
+type arrayEncoder struct {
+	elemEnc encoderFunc
+}
+
+func (ae *arrayEncoder) encode(e *encodeState, k string, v reflect.Value) {
+	// type(1) | klen(1) | vlen(4) | key(len(0)) | 0x00 | field
+	// number(4)
+	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + 4)
+
+	e.data[e.off] = MCPACKV2_ARRAY
+	e.off++
+
+	if len(k) > 0 {
+		e.data[e.off] = byte(len(k) + 1)
+	} else {
+		e.data[e.off] = 0
+	}
+	e.off++
+
+	vlenpos := e.off
+	e.off += 4
+
+	if len(k) > 0 {
+		e.off += copy(e.data[e.off:], k)
+		e.data[e.off] = 0
+		e.off++
+	}
+
+	vpos := e.off
+	PutInt32(e.data[e.off:], int32(v.Len()))
+	e.off += 4
+
+	for i := 0; i < v.Len(); i++ {
+		ae.elemEnc(e, "", v.Index(i))
+	}
+
+	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
 }
 
 func newArrayEncoder(t reflect.Type) encoderFunc {
