@@ -1,4 +1,4 @@
-package gomcpack
+package mcpack
 
 import (
 	"fmt"

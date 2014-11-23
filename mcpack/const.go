@@ -1,4 +1,4 @@
-package gomcpack
+package mcpack
 
 const (
 	MCPACKV2_INVALID      = 0x00
