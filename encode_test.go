@@ -10,47 +10,58 @@ type marshalTest struct {
 	out []byte
 }
 
-type M struct {
-	Foo string `json:"foo"`
-	N   int    `json:"n"`
+type T struct {
+	A bool
+	X string
+	Y int
+	Z int `json:"-"`
 }
+
+type U struct {
+	Alphabet string `json:"alpha"`
+}
+
+type V struct {
+	F1 interface{}
+	F2 int32
+	F3 Number
+}
+
+type Number int
 
 var marshalTests = []marshalTest{
 	{
-		in:  "foo",
-		out: []byte{MCPACKV2_STRING, 0, 4, 0, 0, 0, 'f', 'o', 'o', 0},
+		in: &T{A: true, X: "x", Y: 1, Z: 2},
+		out: []byte{MCPACKV2_OBJECT, 0, 31, 0, 0, 0,
+			3, 0, 0, 0,
+			MCPACKV2_BOOL, 2, 'A', 0, 1,
+			MCPACKV2_STRING, 2, 2, 0, 0, 0, 'X', 0, 'x', 0,
+			MCPACKV2_INT64, 2, 'Y', 0, 1, 0, 0, 0, 0, 0, 0, 0},
 	},
 	{
-		in:  4,
-		out: []byte{MCPACKV2_INT64, 0, 4, 0, 0, 0, 0, 0, 0, 0},
+		in: &U{Alphabet: "a-z"},
+		out: []byte{MCPACKV2_OBJECT, 0, 20, 0, 0, 0,
+			1, 0, 0, 0,
+			MCPACKV2_STRING, 6, 4, 0, 0, 0, 'a', 'l', 'p', 'h', 'a', 0, 'a', '-', 'z', 0},
 	},
 	{
-		in:  true,
-		out: []byte{MCPACKV2_BOOL, 0, 1},
-	},
-	{
-		in: []string{"foo", "bar"},
-		out: []byte{MCPACKV2_ARRAY, 0, 0x18, 0, 0, 0, 2, 0, 0, 0,
-			MCPACKV2_STRING, 0, 4, 0, 0, 0, 'f', 'o', 'o', 0,
-			MCPACKV2_STRING, 0, 4, 0, 0, 0, 'b', 'a', 'r', 0,
-		},
-	},
-	{
-		in: &M{Foo: "bar", N: 9},
-		out: []byte{MCPACKV2_OBJECT, 0, 0x1e, 0, 0, 0, 2, 0, 0, 0,
-			MCPACKV2_STRING, 4, 4, 0, 0, 0, 'f', 'o', 'o', 0, 'b', 'a', 'r', 0,
-			MCPACKV2_INT64, 2, 'n', 0, 9, 0, 0, 0, 0, 0, 0, 0},
+		in: &V{F1: &U{Alphabet: "a-z"}, F2: 1, F3: Number(1)},
+		out: []byte{MCPACKV2_OBJECT, 0, 55, 0, 0, 0,
+			3, 0, 0, 0,
+			MCPACKV2_OBJECT, 3, 20, 0, 0, 0, 'F', '1', 0, 1, 0, 0, 0, MCPACKV2_STRING, 6, 4, 0, 0, 0, 'a', 'l', 'p', 'h', 'a', 0, 'a', '-', 'z', 0,
+			MCPACKV2_INT32, 3, 'F', '2', 0, 1, 0, 0, 0,
+			MCPACKV2_INT64, 3, 'F', '3', 0, 1, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 
 func TestMarshal(t *testing.T) {
-	for i, tt := range marshalTests {
+	for _, tt := range marshalTests {
 		b, err := Marshal(tt.in)
 		if err != nil {
 			t.Error(err)
 		}
 		if !bytes.Equal(tt.out, b) {
-			t.Errorf("mismatch %d, got %#+v", i, b)
+			t.Errorf("mismatch %#+v, got %#+v", tt.in, b)
 		}
 
 	}
