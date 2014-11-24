@@ -12,6 +12,10 @@ func Unmarshal(data []byte, v interface{}) error {
 	return d.unmarshal(v)
 }
 
+type Unmarshaler interface {
+	UnmarshalMCPACK([]byte) error
+}
+
 type decodeState struct {
 	data       []byte
 	off        int
@@ -55,14 +59,25 @@ func (d *decodeState) unmarshal(v interface{}) (err error) {
 	return d.savedError
 }
 
-func (d *decodeState) indirect(v reflect.Value, decodingNull bool) reflect.Value {
+// indirect walks down v allocating pointers as needed,
+// until it gets to a non-pointer.
+// if it encounters an Unmarshaler, indirect stops and returns that.
+// if decodingNull is true, indirect stops at the last pointer so that
+// it can be set to nil.
+func (d *decodeState) indirect(v reflect.Value, decodingNull bool) (Unmarshaler, reflect.Value) {
+	// If v is a named type and is addressable
+	// start with its address, so that is the type has pointer
+	// methods, we find them
 	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
 		v = v.Addr()
 	}
+
 	for {
+		// Load value from interface, but only if the result will be
+		// usefully addressable
 		if v.Kind() == reflect.Interface && !v.IsNil() {
 			e := v.Elem()
-			if e.Kind() == reflect.Ptr && !e.IsNil() && (decodingNull || e.Elem().Kind() == reflect.Ptr) {
+			if e.Kind() == reflect.Ptr && !e.IsNil() && (!decodingNull || e.Elem().Kind() == reflect.Ptr) {
 				v = e
 				continue
 			}
@@ -80,69 +95,33 @@ func (d *decodeState) indirect(v reflect.Value, decodingNull bool) reflect.Value
 			v.Set(reflect.New(v.Type().Elem()))
 		}
 
+		if v.Type().NumMethod() > 0 {
+			println("has methods")
+			if u, ok := v.Interface().(Unmarshaler); ok {
+				println("unmarshaler")
+				return u, reflect.Value{}
+			}
+		}
 		v = v.Elem()
 	}
-	return v
+	return nil, v
 }
 
 func (d *decodeState) value(v reflect.Value) {
 	if !v.IsValid() {
-		typ := d.data[d.off]
-		d.off += 1
-		klen := int(Int8(d.data[d.off:]))
-		d.off += 1
-		vlen := 0
-		switch typ {
-		case MCPACKV2_OBJECT:
-			vlen = int(Int32(d.data[d.off:]))
-			d.off += 4
-		case MCPACKV2_ARRAY:
-			vlen = int(Int32(d.data[d.off:]))
-			d.off += 4
-		case MCPACKV2_STRING:
-			vlen = int(Int32(d.data[d.off:]))
-			d.off += 4
-		case MCPACKV2_SHORT_STRING:
-			vlen = int(Int8(d.data[d.off:]))
-			d.off += 1
-		case MCPACKV2_BINARY:
-			vlen = int(Int32(d.data[d.off:]))
-			d.off += 4
-		case MCPACKV2_SHORT_BINARY:
-			vlen = int(Int8(d.data[d.off:]))
-			d.off += 1
-		case MCPACKV2_INT8:
-			vlen = 1
-		case MCPACKV2_INT16:
-			vlen = 2
-		case MCPACKV2_INT32:
-			vlen = 4
-		case MCPACKV2_INT64:
-			vlen = 8
-		case MCPACKV2_UINT8:
-			vlen = 1
-		case MCPACKV2_UINT16:
-			vlen = 2
-		case MCPACKV2_UINT32:
-			vlen = 4
-		case MCPACKV2_UINT64:
-			vlen = 8
-		case MCPACKV2_BOOL:
-			vlen = 1
-		case MCPACKV2_FLOAT:
-			vlen = 4
-		case MCPACKV2_DOUBLE:
-			vlen = 8
-		case MCPACKV2_DATE:
-		// FIXME
-		case MCPACKV2_NULL:
-			vlen = 1
-		}
-		d.off += klen + vlen
+		d.next()
 		return
 	}
 
-	v = d.indirect(v, false)
+	u, pv := d.indirect(v, false)
+	if u != nil {
+		if err := u.UnmarshalMCPACK(d.next()); err != nil {
+			d.error(err)
+		}
+		return
+	}
+
+	v = pv
 
 	switch d.data[d.off] {
 	case MCPACKV2_OBJECT:
@@ -184,6 +163,63 @@ func (d *decodeState) value(v reflect.Value) {
 	}
 }
 
+func (d *decodeState) next() []byte {
+	start := d.off
+	typ := d.data[d.off]
+	d.off += 1
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1
+	vlen := 0
+	switch typ {
+	case MCPACKV2_OBJECT:
+		vlen = int(Int32(d.data[d.off:]))
+		d.off += 4
+	case MCPACKV2_ARRAY:
+		vlen = int(Int32(d.data[d.off:]))
+		d.off += 4
+	case MCPACKV2_STRING:
+		vlen = int(Int32(d.data[d.off:]))
+		d.off += 4
+	case MCPACKV2_SHORT_STRING:
+		vlen = int(Int8(d.data[d.off:]))
+		d.off += 1
+	case MCPACKV2_BINARY:
+		vlen = int(Int32(d.data[d.off:]))
+		d.off += 4
+	case MCPACKV2_SHORT_BINARY:
+		vlen = int(Int8(d.data[d.off:]))
+		d.off += 1
+	case MCPACKV2_INT8:
+		vlen = 1
+	case MCPACKV2_INT16:
+		vlen = 2
+	case MCPACKV2_INT32:
+		vlen = 4
+	case MCPACKV2_INT64:
+		vlen = 8
+	case MCPACKV2_UINT8:
+		vlen = 1
+	case MCPACKV2_UINT16:
+		vlen = 2
+	case MCPACKV2_UINT32:
+		vlen = 4
+	case MCPACKV2_UINT64:
+		vlen = 8
+	case MCPACKV2_BOOL:
+		vlen = 1
+	case MCPACKV2_FLOAT:
+		vlen = 4
+	case MCPACKV2_DOUBLE:
+		vlen = 8
+	case MCPACKV2_DATE:
+		// FIXME
+	case MCPACKV2_NULL:
+		vlen = 1
+	}
+	d.off += klen + vlen
+	return d.data[start:d.off]
+}
+
 // type(1) | name length(1) | content length (4)
 // | raw name bytes | 0x00 | content bytes | 0x00
 func (d *decodeState) string(v reflect.Value) {
@@ -199,7 +235,15 @@ func (d *decodeState) string(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 4 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := string(d.data[d.off : d.off+vlen-1])
@@ -223,7 +267,15 @@ func (d *decodeState) shortString(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := string(d.data[d.off : d.off+vlen-1])
@@ -247,7 +299,15 @@ func (d *decodeState) binary(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 4 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := d.data[d.off : d.off+vlen]
@@ -271,7 +331,15 @@ func (d *decodeState) shortBinary(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := d.data[d.off : d.off+vlen]
@@ -291,7 +359,15 @@ func (d *decodeState) int8(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Int8(d.data[d.off:])
@@ -311,7 +387,15 @@ func (d *decodeState) uint8(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Uint8(d.data[d.off:])
@@ -331,7 +415,15 @@ func (d *decodeState) int16(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Int16(d.data[d.off:])
@@ -351,7 +443,15 @@ func (d *decodeState) uint16(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Uint16(d.data[d.off:])
@@ -371,7 +471,15 @@ func (d *decodeState) int32(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Int32(d.data[d.off:])
@@ -391,7 +499,15 @@ func (d *decodeState) uint32(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Uint32(d.data[d.off:])
@@ -411,7 +527,15 @@ func (d *decodeState) int64(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Int64(d.data[d.off:])
@@ -431,7 +555,15 @@ func (d *decodeState) uint64(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Uint64(d.data[d.off:])
@@ -451,7 +583,6 @@ func (d *decodeState) null(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
 	}
 
 	d.off += 1 // value
@@ -470,7 +601,15 @@ func (d *decodeState) bool(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := d.data[d.off]
@@ -493,7 +632,15 @@ func (d *decodeState) float(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Float32(d.data[d.off:])
@@ -513,7 +660,15 @@ func (d *decodeState) double(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	val := Float64(d.data[d.off:])
@@ -538,7 +693,15 @@ func (d *decodeState) object(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 4 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	n := int(Int32(d.data[d.off:]))
@@ -565,7 +728,15 @@ func (d *decodeState) array(v reflect.Value) {
 		key := string(d.data[d.off : d.off+klen-1])
 		d.off += klen
 		v = fieldByTag(v, key)
-		v = d.indirect(v, false)
+		u, pv := d.indirect(v, false)
+		if u != nil {
+			d.off -= 1 + 1 + 4 + klen
+			if err := u.UnmarshalMCPACK(d.next()); err != nil {
+				d.error(err)
+			}
+			return
+		}
+		v = pv
 	}
 
 	n := int(Int32(d.data[d.off:]))
