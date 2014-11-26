@@ -96,9 +96,7 @@ func (d *decodeState) indirect(v reflect.Value, decodingNull bool) (Unmarshaler,
 		}
 
 		if v.Type().NumMethod() > 0 {
-			println("has methods")
 			if u, ok := v.Interface().(Unmarshaler); ok {
-				println("unmarshaler")
 				return u, reflect.Value{}
 			}
 		}
