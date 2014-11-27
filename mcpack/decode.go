@@ -399,7 +399,7 @@ func (d *decodeState) uint8(v reflect.Value) {
 	val := Uint8(d.data[d.off:])
 	d.off += 1 // value
 
-	v.SetInt(int64(val))
+	v.SetUint(uint64(val))
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(2)
@@ -455,7 +455,7 @@ func (d *decodeState) uint16(v reflect.Value) {
 	val := Uint16(d.data[d.off:])
 	d.off += 2 // value
 
-	v.SetInt(int64(val))
+	v.SetUint(uint64(val))
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(4)
@@ -511,7 +511,7 @@ func (d *decodeState) uint32(v reflect.Value) {
 	val := Uint32(d.data[d.off:])
 	d.off += 4 // value
 
-	v.SetInt(int64(val))
+	v.SetUint(uint64(val))
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(8)
@@ -539,7 +539,7 @@ func (d *decodeState) int64(v reflect.Value) {
 	val := Int64(d.data[d.off:])
 	d.off += 8 // value
 
-	v.SetInt(int64(val))
+	v.SetInt(val)
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(8)
@@ -567,7 +567,7 @@ func (d *decodeState) uint64(v reflect.Value) {
 	val := Uint64(d.data[d.off:])
 	d.off += 8 // value
 
-	v.SetInt(int64(val))
+	v.SetUint(val)
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | 0x00

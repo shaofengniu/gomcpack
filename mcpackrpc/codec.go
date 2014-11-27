@@ -1,4 +1,4 @@
-package rpc
+package mcpackrpc
 
 import (
 	"encoding/binary"
@@ -66,9 +66,8 @@ func (d *Decoder) Decode(h *Head, m interface{}) error {
 	}
 	d.reset()
 	d.resizeIfNeeded(HEAD_SIZE)
-	n, err := d.r.Read(d.buf[:HEAD_SIZE])
+	_, err := d.r.Read(d.buf[:HEAD_SIZE])
 	if err != nil {
-		println("read head error", nz)
 		return err
 	}
 	d.buf = d.buf[:HEAD_SIZE]
@@ -79,7 +78,6 @@ func (d *Decoder) Decode(h *Head, m interface{}) error {
 	d.resizeIfNeeded(int(h.BodyLen))
 	_, err = d.r.Read(d.buf[HEAD_SIZE : HEAD_SIZE+h.BodyLen])
 	if err != nil {
-		println("read body error")
 		return err
 	}
 	d.buf = d.buf[:HEAD_SIZE+h.BodyLen]

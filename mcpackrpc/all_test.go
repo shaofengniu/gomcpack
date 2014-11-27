@@ -1,10 +1,12 @@
-package rpc
+package mcpackrpc
 
 import (
-	"fmt"
+	"log"
 	"net"
-	"net/rpc"
+	"os"
 	"testing"
+
+	"gitlab.baidu.com/niushaofeng/gomcpack/rpc"
 )
 
 type Args struct {
@@ -25,12 +27,12 @@ func (t *Arith) Add(args *Args, reply *Reply) error {
 
 func init() {
 	rpc.Register(new(Arith))
+	log.SetOutput(os.Stdout)
 }
 
 func TestClient(t *testing.T) {
 	cli, srv := net.Pipe()
 	go ServeConn(srv)
-
 	client := NewClient(cli)
 	defer client.Close()
 
@@ -40,5 +42,7 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Errorf("Add: expected no error but go string %q", err.Error())
 	}
-	fmt.Println(reply)
+	if reply.C != 15 {
+		t.Errorf("Add: got %d, expected %d", reply.C, 15)
+	}
 }
