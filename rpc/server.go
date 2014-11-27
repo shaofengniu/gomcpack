@@ -289,7 +289,7 @@ func suitableMethods(typ reflect.Type, reportErr bool) map[string]*methodType {
 	for m := 0; m < typ.NumMethod(); m++ {
 		method := typ.Method(m)
 		mtype := method.Type
-		mname := method.Name
+		mname := strings.ToLower(method.Name)
 		// Method must be exported.
 		if method.PkgPath != "" {
 			continue
@@ -564,7 +564,7 @@ func (server *Server) readRequestHeader(codec ServerCodec) (service *service, mt
 	keepReading = true
 
 	serviceName := "Global"
-	methodName := req.ServiceMethod
+	methodName := strings.ToLower(req.ServiceMethod)
 	dot := strings.LastIndex(req.ServiceMethod, ".")
 	if dot >= 0 {
 		serviceName = req.ServiceMethod[:dot]

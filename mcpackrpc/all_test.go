@@ -38,7 +38,7 @@ func TestClient(t *testing.T) {
 
 	args := &Args{7, 8}
 	reply := new(Reply)
-	err := client.Call("Add", args, reply)
+	err := client.Call("add", args, reply)
 	if err != nil {
 		t.Errorf("Add: expected no error but go string %q", err.Error())
 	}
