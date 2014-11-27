@@ -26,7 +26,7 @@ func (t *Arith) Add(args *Args, reply *Reply) error {
 }
 
 func init() {
-	rpc.Register(new(Arith))
+	rpc.RegisterName("Global", new(Arith))
 	log.SetOutput(os.Stdout)
 }
 
@@ -38,7 +38,7 @@ func TestClient(t *testing.T) {
 
 	args := &Args{7, 8}
 	reply := new(Reply)
-	err := client.Call("Arith.Add", args, reply)
+	err := client.Call("Add", args, reply)
 	if err != nil {
 		t.Errorf("Add: expected no error but go string %q", err.Error())
 	}

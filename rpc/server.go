@@ -563,25 +563,25 @@ func (server *Server) readRequestHeader(codec ServerCodec) (service *service, mt
 	// we can still recover and move on to the next request.
 	keepReading = true
 
+	serviceName := "Global"
+	methodName := req.ServiceMethod
 	dot := strings.LastIndex(req.ServiceMethod, ".")
-	if dot < 0 {
-		err = errors.New("rpc: service/method request ill-formed: " + req.ServiceMethod)
-		return
+	if dot >= 0 {
+		serviceName = req.ServiceMethod[:dot]
+		methodName = req.ServiceMethod[dot+1:]
 	}
-	serviceName := req.ServiceMethod[:dot]
-	methodName := req.ServiceMethod[dot+1:]
 
 	// Look up the request.
 	server.mu.RLock()
 	service = server.serviceMap[serviceName]
 	server.mu.RUnlock()
 	if service == nil {
-		err = errors.New("rpc: can't find service " + req.ServiceMethod)
+		err = errors.New("rpc: can't find service " + serviceName)
 		return
 	}
 	mtype = service.method[methodName]
 	if mtype == nil {
-		err = errors.New("rpc: can't find method " + req.ServiceMethod)
+		err = errors.New("rpc: can't find method " + methodName)
 	}
 	return
 }
