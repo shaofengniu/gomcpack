@@ -10,12 +10,12 @@ import (
 )
 
 type Args struct {
-	A int `json:"A"`
-	B int `json:"B"`
+	A int
+	B int
 }
 
 type Reply struct {
-	C int `json:"C"`
+	C int
 }
 
 type Arith int

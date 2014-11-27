@@ -1,7 +1,7 @@
 package mcpack
 
 import (
-	"fmt"
+	"bytes"
 	"reflect"
 	"runtime"
 )
@@ -65,6 +65,9 @@ func (d *decodeState) unmarshal(v interface{}) (err error) {
 // if decodingNull is true, indirect stops at the last pointer so that
 // it can be set to nil.
 func (d *decodeState) indirect(v reflect.Value, decodingNull bool) (Unmarshaler, reflect.Value) {
+	if !v.IsValid() {
+		return nil, reflect.Value{}
+	}
 	// If v is a named type and is addressable
 	// start with its address, so that is the type has pointer
 	// methods, we find them
@@ -230,7 +233,7 @@ func (d *decodeState) string(v reflect.Value) {
 	d.off += 4 // content length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -247,6 +250,9 @@ func (d *decodeState) string(v reflect.Value) {
 	val := string(d.data[d.off : d.off+vlen-1])
 	d.off += vlen // value and 0x00
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetString(val)
 }
 
@@ -262,7 +268,7 @@ func (d *decodeState) shortString(v reflect.Value) {
 	d.off += 1 // content length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -279,6 +285,9 @@ func (d *decodeState) shortString(v reflect.Value) {
 	val := string(d.data[d.off : d.off+vlen-1])
 	d.off += vlen // value and 0x00
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetString(val)
 }
 
@@ -294,7 +303,7 @@ func (d *decodeState) binary(v reflect.Value) {
 	d.off += 4 // content length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -311,6 +320,9 @@ func (d *decodeState) binary(v reflect.Value) {
 	val := d.data[d.off : d.off+vlen]
 	d.off += vlen // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetBytes(val)
 }
 
@@ -326,7 +338,7 @@ func (d *decodeState) shortBinary(v reflect.Value) {
 	d.off += 1 // content length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -343,6 +355,9 @@ func (d *decodeState) shortBinary(v reflect.Value) {
 	val := d.data[d.off : d.off+vlen]
 	d.off += vlen // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetBytes(val)
 }
 
@@ -354,7 +369,7 @@ func (d *decodeState) int8(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -371,6 +386,9 @@ func (d *decodeState) int8(v reflect.Value) {
 	val := Int8(d.data[d.off:])
 	d.off += 1 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetInt(int64(val))
 }
 
@@ -382,7 +400,7 @@ func (d *decodeState) uint8(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -399,6 +417,9 @@ func (d *decodeState) uint8(v reflect.Value) {
 	val := Uint8(d.data[d.off:])
 	d.off += 1 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetUint(uint64(val))
 }
 
@@ -410,7 +431,7 @@ func (d *decodeState) int16(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -427,6 +448,9 @@ func (d *decodeState) int16(v reflect.Value) {
 	val := Int16(d.data[d.off:])
 	d.off += 2 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetInt(int64(val))
 }
 
@@ -438,7 +462,7 @@ func (d *decodeState) uint16(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -455,6 +479,9 @@ func (d *decodeState) uint16(v reflect.Value) {
 	val := Uint16(d.data[d.off:])
 	d.off += 2 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetUint(uint64(val))
 }
 
@@ -466,7 +493,7 @@ func (d *decodeState) int32(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -483,6 +510,9 @@ func (d *decodeState) int32(v reflect.Value) {
 	val := Int32(d.data[d.off:])
 	d.off += 4 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetInt(int64(val))
 }
 
@@ -494,7 +524,7 @@ func (d *decodeState) uint32(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -511,6 +541,9 @@ func (d *decodeState) uint32(v reflect.Value) {
 	val := Uint32(d.data[d.off:])
 	d.off += 4 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetUint(uint64(val))
 }
 
@@ -522,7 +555,7 @@ func (d *decodeState) int64(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -539,6 +572,9 @@ func (d *decodeState) int64(v reflect.Value) {
 	val := Int64(d.data[d.off:])
 	d.off += 8 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetInt(val)
 }
 
@@ -550,7 +586,7 @@ func (d *decodeState) uint64(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -567,6 +603,9 @@ func (d *decodeState) uint64(v reflect.Value) {
 	val := Uint64(d.data[d.off:])
 	d.off += 8 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetUint(val)
 }
 
@@ -578,13 +617,16 @@ func (d *decodeState) null(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 	}
 
 	d.off += 1 // value
 
+	if !v.IsValid() {
+		return
+	}
 	v.Set(reflect.Zero(v.Type()))
 }
 
@@ -596,7 +638,7 @@ func (d *decodeState) bool(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -612,6 +654,10 @@ func (d *decodeState) bool(v reflect.Value) {
 
 	val := d.data[d.off]
 	d.off += 1
+
+	if !v.IsValid() {
+		return
+	}
 	if val == 0 {
 		v.SetBool(false)
 	} else {
@@ -627,7 +673,7 @@ func (d *decodeState) float(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -644,6 +690,9 @@ func (d *decodeState) float(v reflect.Value) {
 	val := Float32(d.data[d.off:])
 	d.off += 4
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetFloat(float64(val))
 }
 
@@ -655,7 +704,7 @@ func (d *decodeState) double(v reflect.Value) {
 	d.off += 1 // name length
 
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -672,6 +721,9 @@ func (d *decodeState) double(v reflect.Value) {
 	val := Float64(d.data[d.off:])
 	d.off += 8
 
+	if !v.IsValid() {
+		return
+	}
 	v.SetFloat(val)
 }
 
@@ -688,7 +740,7 @@ func (d *decodeState) object(v reflect.Value) {
 
 	// FIXME
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen // name and 0x00
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -704,12 +756,12 @@ func (d *decodeState) object(v reflect.Value) {
 
 	n := int(Int32(d.data[d.off:]))
 	d.off += 4 // member number
-
 	for i := 0; i < n; i++ {
 		d.value(v)
 	}
 }
 
+//FIXME: fix when v is invalid
 // type(1) | name length(1) | item size(4) | raw name bytes | 0x00
 // | element number(4) | element1 | ... | elementN
 func (d *decodeState) array(v reflect.Value) {
@@ -723,7 +775,7 @@ func (d *decodeState) array(v reflect.Value) {
 
 	//var key string
 	if klen > 0 {
-		key := string(d.data[d.off : d.off+klen-1])
+		key := d.data[d.off : d.off+klen-1]
 		d.off += klen
 		v = fieldByTag(v, key)
 		u, pv := d.indirect(v, false)
@@ -770,14 +822,23 @@ func (d *decodeState) array(v reflect.Value) {
 	}
 }
 
-func fieldByTag(v reflect.Value, name string) reflect.Value {
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		if t.Field(i).Tag.Get("json") == name {
-			return v.Field(i)
+func fieldByTag(v reflect.Value, name []byte) reflect.Value {
+	var f *field
+	fields := cachedTypeFields(v.Type())
+	for i := range fields {
+		ff := &fields[i]
+		if bytes.Equal(ff.nameBytes, name) {
+			f = ff
+			break
+		}
+		if f == nil && ff.equalFold(ff.nameBytes, name) {
+			f = ff
 		}
 	}
-	panic(fmt.Errorf("field %s not found", name))
+	if f != nil {
+		return fieldByIndex(v, f.index)
+	}
+	return reflect.Value{}
 }
 
 type InvalidUnmarshalError struct {
