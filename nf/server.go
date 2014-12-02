@@ -1,5 +1,15 @@
 package nf
 
+import (
+	"bufio"
+	"io"
+	"log"
+	"net"
+	"runtime"
+	"sync"
+	"time"
+)
+
 type conn struct {
 	remoteAddr   string   // network address of remote side
 	server       *Server  // the Server on which the connection arrived
@@ -9,6 +19,8 @@ type conn struct {
 	clientGone   bool       // if client has disconnected mid-request
 	closeNotifyc chan bool  // made lazily
 }
+
+var debugServerConnections = false
 
 func (srv *Server) newConn(rwc net.Conn) (c *conn, err error) {
 	c = new(conn)
@@ -35,7 +47,7 @@ func (c *conn) serve() {
 	}()
 
 	for {
-		w, err := readRequest()
+		w, err := c.readRequest()
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -62,7 +74,7 @@ func (c *conn) readRequest() (w *response, err error) {
 		}()
 	}
 	var req *Request
-	if req, err = ReadRequest(c.buf.Reader); err != nil {
+	if req, err = ReadRequest(c.buf); err != nil {
 		return nil, err
 	}
 	req.RemoteAddr = c.remoteAddr
@@ -76,9 +88,13 @@ func (c *conn) readRequest() (w *response, err error) {
 	return w, nil
 }
 
+func (c *conn) setState(nc net.Conn, state ConnState) {
+
+}
+
 type ResponseWriter interface {
 	Header() *Header
-	Write([]byte) (int, err)
+	Write([]byte) (int, error)
 }
 
 type response struct {
@@ -97,22 +113,16 @@ func (w *response) Write(data []byte) (n int, err error) {
 	if len(data) == 0 {
 		return 0, nil
 	}
-	w.handlerHeader.BodyLen = len(data)
-	if err = w.writeHeader(); err != nil {
-		return 0, err
+	w.handlerHeader.BodyLen = uint32(len(data))
+	n, err = w.handlerHeader.Write(w.conn.buf)
+	if err != nil {
+		return 0, nil
 	}
 	return w.conn.buf.Write(data)
 }
 
-func (w *response) writeHeader() error {
-	var buf [HEADER_SIZE]byte
-	err = w.handlerHeader.Marshal(buf[:])
-	if err != nil {
-		return err
-	}
-	_, err = w.conn.buf.Write(buf[:])
-	return err
-
+func (w *response) finishRequest() {
+	w.conn.buf.Flush()
 }
 
 type Server struct {
@@ -148,7 +158,7 @@ type serveHandler struct {
 	srv *Server
 }
 
-func (sh serverHandler) Serve(rw ResponseWriter, req *Request) {
+func (sh serveHandler) Serve(rw ResponseWriter, req *Request) {
 	sh.srv.Handler.Serve(rw, req)
 }
 
@@ -170,7 +180,7 @@ func (srv *Server) Serve(l net.Listener) error {
 	for {
 		rw, e := l.Accept()
 		if e != nil {
-			if ne, ok := e.(net.Error); ok && net.Temporary() {
+			if ne, ok := e.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -195,8 +205,12 @@ func (srv *Server) Serve(l net.Listener) error {
 	}
 }
 
-func (srv *Server) initialLimitedReaderSize() int64 {
-	return int64(HEADER_SIZE)
+func (srv *Server) logf(format string, args ...interface{}) {
+	if srv.ErrorLog != nil {
+		srv.ErrorLog.Printf(format, args...)
+	} else {
+		log.Printf(format, args...)
+	}
 }
 
 var (
@@ -239,4 +253,10 @@ func newLoggingConn(baseName string, c net.Conn) net.Conn {
 
 type Handler interface {
 	Serve(ResponseWriter, *Request)
+}
+
+type HandlerFunc func(ResponseWriter, *Request)
+
+func (f HandlerFunc) Serve(w ResponseWriter, r *Request) {
+	f(w, r)
 }
