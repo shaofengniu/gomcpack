@@ -36,3 +36,10 @@ func (c *Client) Do(req *Request) (resp *Response, err error) {
 	}
 	return ReadResponse(c.buf)
 }
+
+func (c *Client) Close() {
+	c.buf.Flush()
+	c.rwc.Close()
+	putBufioReader(c.buf.Reader)
+	putBufioWriter(c.buf.Writer)
+}

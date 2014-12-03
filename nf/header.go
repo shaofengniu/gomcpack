@@ -20,7 +20,7 @@ const HEADER_SIZE = 36
 
 func (h *Header) Unmarshal(b []byte) error {
 	if len(b) < HEADER_SIZE {
-		return errors.New("incomplete head")
+		return errors.New("incomplete header")
 	}
 	h.Id = binary.LittleEndian.Uint16(b[0:2])
 	h.Version = binary.LittleEndian.Uint16(b[2:4])
@@ -34,7 +34,7 @@ func (h *Header) Unmarshal(b []byte) error {
 
 func (h *Header) Marshal(b []byte) error {
 	if len(b) < HEADER_SIZE {
-		return errors.New("not enough buffer")
+		return errors.New("not enough buffer for header")
 	}
 	binary.LittleEndian.PutUint16(b[0:2], h.Id)
 	binary.LittleEndian.PutUint16(b[2:4], h.Version)
@@ -48,8 +48,7 @@ func (h *Header) Marshal(b []byte) error {
 
 func (h *Header) Write(w io.Writer) (n int, err error) {
 	var buf [HEADER_SIZE]byte
-	err = h.Marshal(buf[:])
-	if err != nil {
+	if err = h.Marshal(buf[:]); err != nil {
 		return 0, err
 	}
 	return w.Write(buf[:])
@@ -57,12 +56,10 @@ func (h *Header) Write(w io.Writer) (n int, err error) {
 
 func (h *Header) Read(r io.Reader) (n int, err error) {
 	var buf [HEADER_SIZE]byte
-	n, err = io.ReadFull(r, buf[:])
-	if err != nil {
+	if n, err = io.ReadFull(r, buf[:]); err != nil {
 		return n, err
 	}
-	err = h.Unmarshal(buf[:])
-	if err != nil {
+	if err = h.Unmarshal(buf[:]); err != nil {
 		return n, err
 	}
 	return n, nil

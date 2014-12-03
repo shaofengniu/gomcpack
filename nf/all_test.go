@@ -23,23 +23,29 @@ func TestServer(t *testing.T) {
 	}
 	go s.ListenAndServe()
 
-	c, err := Dial("localhost:8888")
-	if err != nil {
-		t.Error(err)
-	}
-	req, err := NewRequest(strings.NewReader("ping"))
-	if err != nil {
-		t.Error(err)
-	}
-	resp, err := c.Do(req)
-	if err != nil {
-		t.Error(err)
-	}
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Error(err)
-	}
-	if string(content) != "pong" {
-		t.Errorf("got %s", string(content))
+	for i := 0; i < 10; i++ {
+		c, err := Dial("localhost:8888")
+		if err != nil {
+			t.Error(err)
+		}
+		for j := 0; j < 10; j++ {
+			req, err := NewRequest(strings.NewReader("ping"))
+			if err != nil {
+				t.Error(err)
+			}
+
+			resp, err := c.Do(req)
+			if err != nil {
+				t.Error(err)
+			}
+			content, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Error(err)
+			}
+			if string(content) != "pong" {
+				t.Errorf("got %s", string(content))
+			}
+		}
+		c.Close()
 	}
 }

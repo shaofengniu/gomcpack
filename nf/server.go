@@ -2,6 +2,7 @@ package nf
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -10,18 +11,26 @@ import (
 	"time"
 )
 
+type CloseNotifier interface {
+	CloseNotify() <-chan struct{}
+}
+
 type conn struct {
 	remoteAddr   string   // network address of remote side
 	server       *Server  // the Server on which the connection arrived
 	rwc          net.Conn // i/o connection
-	buf          *bufio.ReadWriter
-	mu           sync.Mutex // guards the following
-	clientGone   bool       // if client has disconnected mid-request
-	closeNotifyc chan bool  // made lazily
+	sr           liveSwitchReader
+	buf          *bufio.ReadWriter // buffered reader/writer for rwc
+	mu           sync.Mutex        // guards the following
+	clientGone   bool              // if client has disconnected mid-request
+	closeNotifyc chan struct{}     // made lazily
 }
 
-var debugServerConnections = false
+// debugServerConnections controls whether all server connections are
+// wrapped with a verbose logging wrapper
+var debugServerConnections = true
 
+// Create new connection from rwc
 func (srv *Server) newConn(rwc net.Conn) (c *conn, err error) {
 	c = new(conn)
 	c.remoteAddr = rwc.RemoteAddr().String()
@@ -30,13 +39,15 @@ func (srv *Server) newConn(rwc net.Conn) (c *conn, err error) {
 	if debugServerConnections {
 		c.rwc = newLoggingConn("server", c.rwc)
 	}
-	br := newBufioReader(c.rwc)
+	c.sr = liveSwitchReader{r: c.rwc}
+	br := newBufioReader(&c.sr)
 	bw := newBufioWriter(c.rwc)
 	c.buf = bufio.NewReadWriter(br, bw)
 	return c, nil
 }
 
 func (c *conn) serve() {
+	origConn := c.rwc
 	defer func() {
 		if err := recover(); err != nil {
 			const size = 64 << 10
@@ -44,6 +55,9 @@ func (c *conn) serve() {
 			buf = buf[:runtime.Stack(buf, false)]
 			c.server.logf("nf: panic serving %v: %v\n%s", c.remoteAddr, err, buf)
 		}
+
+		c.close()
+		c.setState(origConn, StateClosed)
 	}()
 
 	for {
@@ -89,7 +103,72 @@ func (c *conn) readRequest() (w *response, err error) {
 }
 
 func (c *conn) setState(nc net.Conn, state ConnState) {
+	log.Printf("%s-%s", nc.RemoteAddr().String(), state)
+}
 
+func (c *conn) finalFlush() {
+	if c.buf != nil {
+		c.buf.Flush()
+		putBufioReader(c.buf.Reader)
+		putBufioWriter(c.buf.Writer)
+		c.buf = nil
+	}
+}
+
+func (c *conn) close() {
+	c.finalFlush()
+	if c.rwc != nil {
+		c.rwc.Close()
+		c.rwc = nil
+	}
+}
+
+func (c *conn) closeNotify() <-chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closeNotifyc == nil {
+		c.closeNotifyc = make(chan struct{}, 1)
+		pr, pw := io.Pipe()
+		readSource := c.sr.Swap(pr)
+		go func() {
+			_, err := io.Copy(pw, readSource)
+			if err == nil {
+				err = io.EOF
+			}
+			pw.CloseWithError(err)
+			c.noteClientGone()
+		}()
+	}
+	return c.closeNotifyc
+}
+
+func (c *conn) noteClientGone() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closeNotifyc != nil && !c.clientGone {
+		close(c.closeNotifyc)
+	}
+	c.clientGone = true
+}
+
+type liveSwitchReader struct {
+	sync.Mutex
+	r io.Reader
+}
+
+func (sr *liveSwitchReader) Read(p []byte) (n int, err error) {
+	sr.Lock()
+	r := sr.r
+	sr.Unlock()
+	return r.Read(p)
+}
+
+func (sr *liveSwitchReader) Swap(i io.Reader) (o io.Reader) {
+	sr.Lock()
+	o = sr.r
+	sr.r = i
+	sr.Unlock()
+	return o
 }
 
 type ResponseWriter interface {
@@ -132,6 +211,9 @@ type Server struct {
 	WriteTimeout time.Duration // maximum duration before timing out write of the response
 	ErrorLog     *log.Logger   // If nil, logging goes to os.Stderr via the log package's standard logger
 
+	// ConnState specifies an optional callback function that is
+	// called when a client connection changes state.
+	ConnState func(net.Conn, ConnState)
 }
 
 type ConnState int
@@ -246,9 +328,45 @@ func putBufioWriter(bw *bufio.Writer) {
 	bufioWriterPool.Put(bw)
 }
 
+var (
+	uniqNameMu   sync.Mutex
+	uniqNameNext = make(map[string]int)
+)
+
 func newLoggingConn(baseName string, c net.Conn) net.Conn {
-	// TODO
-	return c
+	uniqNameMu.Lock()
+	defer uniqNameMu.Unlock()
+	uniqNameNext[baseName]++
+	return &loggingConn{
+		name: fmt.Sprintf("%s-%d", baseName, uniqNameNext[baseName]),
+		Conn: c,
+	}
+}
+
+type loggingConn struct {
+	name string
+	net.Conn
+}
+
+func (c *loggingConn) Write(p []byte) (n int, err error) {
+	log.Printf("%s.Write(%d) = ....", c.name, len(p))
+	n, err = c.Conn.Write(p)
+	log.Printf("%s.Write(%d) = %d, %v", c.name, len(p), n, err)
+	return
+}
+
+func (c *loggingConn) Read(p []byte) (n int, err error) {
+	log.Printf("%s.Read(%d) = ....", c.name, len(p))
+	n, err = c.Conn.Read(p)
+	log.Printf("%s.Read(%d) = %d, %v", c.name, len(p), n, err)
+	return
+}
+
+func (c *loggingConn) Close() (err error) {
+	log.Printf("%s.Close() = ...", c.name)
+	err = c.Conn.Close()
+	log.Printf("%s.Close() = %v", c.name, err)
+	return
 }
 
 type Handler interface {

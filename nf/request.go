@@ -44,6 +44,8 @@ func NewRequest(body io.Reader) (*Request, error) {
 		case *strings.Reader:
 			req.Header.BodyLen = uint32(v.Len())
 			req.Body = io.LimitReader(body, int64(req.Header.BodyLen))
+		default:
+			panic("unsupported io.Reader")
 		}
 	}
 	return req, nil
