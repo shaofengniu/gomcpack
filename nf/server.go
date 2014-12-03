@@ -2,6 +2,7 @@ package nf
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,11 @@ import (
 	"runtime"
 	"sync"
 	"time"
+)
+
+// Errors
+var (
+	ErrWroteResponse = errors.New("response has already been written")
 )
 
 type CloseNotifier interface {
@@ -177,9 +183,9 @@ type ResponseWriter interface {
 }
 
 type response struct {
-	conn        *conn
-	req         *Request
-	wroteHeader bool // reply header has been written
+	conn          *conn
+	req           *Request
+	wroteResponse bool // reply has already been written
 
 	handlerHeader Header
 }
@@ -189,6 +195,10 @@ func (w *response) Header() *Header {
 }
 
 func (w *response) Write(data []byte) (n int, err error) {
+	if w.wroteResponse {
+		return 0, ErrWroteResponse
+	}
+	w.wroteResponse = true
 	if len(data) == 0 {
 		return 0, nil
 	}
@@ -202,6 +212,10 @@ func (w *response) Write(data []byte) (n int, err error) {
 
 func (w *response) finishRequest() {
 	w.conn.buf.Flush()
+}
+
+func (w *response) CloseNotify() {
+	return w.conn.closeNotify()
 }
 
 type Server struct {
@@ -293,6 +307,7 @@ func (srv *Server) logf(format string, args ...interface{}) {
 	} else {
 		log.Printf(format, args...)
 	}
+
 }
 
 var (
@@ -369,10 +384,14 @@ func (c *loggingConn) Close() (err error) {
 	return
 }
 
+// Objects implementing the Handler interface can be registered to
+// serve client requests
 type Handler interface {
 	Serve(ResponseWriter, *Request)
 }
 
+// The HandlerFunc type is an adapter to allow the use of ordinary
+// functions as handlers.
 type HandlerFunc func(ResponseWriter, *Request)
 
 func (f HandlerFunc) Serve(w ResponseWriter, r *Request) {
