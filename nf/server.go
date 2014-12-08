@@ -218,6 +218,11 @@ func (w *response) CloseNotify() <-chan struct{} {
 	return w.conn.closeNotify()
 }
 
+func Serve(l net.Listener, handler Handler) error {
+	srv := &Server{Handler: handler}
+	return srv.Serve(l)
+}
+
 type Server struct {
 	Addr         string        // TCP address to listen on
 	Handler      Handler       // handler to invoke

@@ -8,8 +8,8 @@ import (
 
 type Client struct {
 	Timeout time.Duration
-	rwc     net.Conn
-	buf     *bufio.ReadWriter
+	net.Conn
+	buf *bufio.ReadWriter
 }
 
 func Dial(addr string) (*Client, error) {
@@ -18,7 +18,7 @@ func Dial(addr string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.rwc = conn
+	c.Conn = conn
 	br := newBufioReader(conn)
 	bw := newBufioWriter(conn)
 	c.buf = bufio.NewReadWriter(br, bw)
@@ -26,20 +26,24 @@ func Dial(addr string) (*Client, error) {
 }
 
 func (c *Client) Do(req *Request) (resp *Response, err error) {
-	_, err = req.Write(c.buf)
-	if err != nil {
-		return nil, err
-	}
-	err = c.buf.Flush()
+	err = c.Write(req)
 	if err != nil {
 		return nil, err
 	}
 	return ReadResponse(c.buf)
 }
 
+func (c *Client) Write(req *Request) error {
+	_, err := req.Write(c.buf)
+	if err != nil {
+		return err
+	}
+	return c.buf.Flush()
+}
+
 func (c *Client) Close() {
 	c.buf.Flush()
-	c.rwc.Close()
+	c.Conn.Close()
 	putBufioReader(c.buf.Reader)
 	putBufioWriter(c.buf.Writer)
 }

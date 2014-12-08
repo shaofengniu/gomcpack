@@ -31,7 +31,7 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 	return req, nil
 }
 
-func NewRequest(body io.Reader) (*Request, error) {
+func NewRequest(body io.Reader) *Request {
 	req := new(Request)
 	if body != nil {
 		switch v := body.(type) {
@@ -48,5 +48,5 @@ func NewRequest(body io.Reader) (*Request, error) {
 			panic("unsupported io.Reader")
 		}
 	}
-	return req, nil
+	return req
 }
