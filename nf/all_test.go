@@ -253,3 +253,74 @@ func (l *errorListener) Close() error {
 func (l *errorListener) Addr() net.Addr {
 	return dummyAddr("test-address")
 }
+
+func BenchmarkClientServer(b *testing.B) {
+	b.ReportAllocs()
+	b.StopTimer()
+	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		fmt.Fprintf(w, "Hello world.\n")
+	}))
+	defer ts.Close()
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		c, err := Dial(ts.Listener.Addr().String())
+		if err != nil {
+			b.Fatalf("Dial: %v", err)
+		}
+		resp, err := c.Do(NewRequest(strings.NewReader("ping")))
+		if err != nil {
+			b.Fatalf("Do: %v", err)
+		}
+		all, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			b.Fatalf("ReadAll: %v", err)
+		}
+		body := string(all)
+		if body != "Hello world.\n" {
+			b.Fatalf("Got body: %v", body)
+		}
+		c.Close()
+	}
+
+	b.StopTimer()
+}
+
+func benchmarkClientServerParallel(b *testing.B, parallelism int) {
+	b.ReportAllocs()
+	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		fmt.Fprintf(w, "Hello world.\n")
+	}))
+	defer ts.Close()
+	b.ResetTimer()
+	b.SetParallelism(parallelism)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			c, err := Dial(ts.Listener.Addr().String())
+			if err != nil {
+				b.Fatalf("Dial: %v", err)
+			}
+			resp, err := c.Do(NewRequest(strings.NewReader("ping")))
+			if err != nil {
+				b.Fatalf("Do: %v", err)
+			}
+			all, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				b.Fatalf("ReadAll: %v", err)
+			}
+			body := string(all)
+			if body != "Hello world.\n" {
+				b.Fatalf("Got body: %v", body)
+			}
+			c.Close()
+		}
+	})
+}
+
+func BenchmarkClientServerParallel4(b *testing.B) {
+	benchmarkClientServerParallel(b, 4)
+}
+
+func BenchmarkClientServerParallel64(b *testing.B) {
+	benchmarkClientServerParallel(b, 64)
+}
