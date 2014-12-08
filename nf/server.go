@@ -34,7 +34,7 @@ type conn struct {
 
 // debugServerConnections controls whether all server connections are
 // wrapped with a verbose logging wrapper
-var debugServerConnections = true
+var debugServerConnections = false
 
 // Create new connection from rwc
 func (srv *Server) newConn(rwc net.Conn) (c *conn, err error) {
@@ -109,7 +109,6 @@ func (c *conn) readRequest() (w *response, err error) {
 }
 
 func (c *conn) setState(nc net.Conn, state ConnState) {
-	log.Printf("%s-%s", nc.RemoteAddr().String(), state)
 }
 
 func (c *conn) finalFlush() {
@@ -157,6 +156,7 @@ func (c *conn) noteClientGone() {
 	c.clientGone = true
 }
 
+// A liveSwitchReader can have its Reader changed at runtime.
 type liveSwitchReader struct {
 	sync.Mutex
 	r io.Reader
@@ -214,7 +214,7 @@ func (w *response) finishRequest() {
 	w.conn.buf.Flush()
 }
 
-func (w *response) CloseNotify() {
+func (w *response) CloseNotify() <-chan struct{} {
 	return w.conn.closeNotify()
 }
 
