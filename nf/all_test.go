@@ -31,14 +31,18 @@ func TestServerPingPong(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 10; i++ {
-		c, err := Dial(s.Listener.Addr().String())
+		conn, err := net.Dial("tcp", s.Listener.Addr().String())
 		if err != nil {
-			t.Error(err)
+			t.Fatalf("Dial: %v", err)
 		}
 		for j := 0; j < 10; j++ {
-			resp, err := c.Do(NewRequest(strings.NewReader("ping")))
+			req := NewRequest(strings.NewReader("ping"))
+			if _, err := req.Write(conn); err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			resp, err := ReadResponse(conn)
 			if err != nil {
-				t.Error(err)
+				t.Fatalf("ReadResponse: %v", err)
 			}
 			content, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
@@ -48,10 +52,11 @@ func TestServerPingPong(t *testing.T) {
 				t.Errorf("expected pong, got %s", string(content))
 			}
 		}
-		c.Close()
+		conn.Close()
 	}
 }
 
+/*
 func TestServerTimeouts(t *testing.T) {
 	defer afterTest(t)
 	reqNum := 0
@@ -64,10 +69,8 @@ func TestServerTimeouts(t *testing.T) {
 	ts.Start()
 	defer ts.Close()
 
-	c, err := Dial(ts.Listener.Addr().String())
-	if err != nil {
-		t.Fatalf("Dial: %v", err)
-	}
+	c := NewClient([]string{ts.Listener.Addr().String()})
+	defer c.Close()
 	resp, err := c.Do(NewRequest(strings.NewReader("ping")))
 	if err != nil {
 		t.Fatalf("Do: %v", err)
@@ -79,12 +82,12 @@ func TestServerTimeouts(t *testing.T) {
 	}
 
 	t1 := time.Now()
-	c, err = Dial(ts.Listener.Addr().String())
+	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
 	buf := make([]byte, 1)
-	n, err := c.Read(buf)
+	n, err := conn.Read(buf)
 	latency := time.Since(t1)
 	if n != 0 || err != io.EOF {
 		t.Errorf("Read = %v, %v, wanted %v, %v", n, err, 0, io.EOF)
@@ -93,10 +96,6 @@ func TestServerTimeouts(t *testing.T) {
 		t.Errorf("got EOF after %s, want >= %s", latency, 200*time.Millisecond)
 	}
 
-	c, err = Dial(ts.Listener.Addr().String())
-	if err != nil {
-		t.Fatalf("Dial: %v", err)
-	}
 	resp, err = c.Do(NewRequest(strings.NewReader("ping")))
 	if err != nil {
 		t.Fatalf("Do: %v", err)
@@ -108,23 +107,24 @@ func TestServerTimeouts(t *testing.T) {
 	}
 
 }
+*/
 
 func TestClientWriteShutdown(t *testing.T) {
 	defer afterTest(t)
 	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {}))
 	defer ts.Close()
-	c, err := Dial(ts.Listener.Addr().String())
+	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	err = c.Conn.(*net.TCPConn).CloseWrite()
+	err = conn.(*net.TCPConn).CloseWrite()
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
 	donec := make(chan bool)
 	go func() {
 		defer close(donec)
-		bs, err := ioutil.ReadAll(c)
+		bs, err := ioutil.ReadAll(conn)
 		if err != nil {
 			t.Fatalf("ReadAll: %v", err)
 		}
@@ -151,18 +151,19 @@ func TestCloseNotifier(t *testing.T) {
 		sawClose <- true
 	}))
 	defer ts.Close()
-	c, err := Dial(ts.Listener.Addr().String())
+
+	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
 	diec := make(chan bool)
 	go func() {
-		err := c.Write(NewRequest(strings.NewReader("ping")))
+		_, err := NewRequest(strings.NewReader("ping")).Write(conn)
 		if err != nil {
 			t.Fatalf("Write: %v", err)
 		}
 		<-diec
-		c.Close()
+		conn.Close()
 	}()
 For:
 	for {
@@ -263,11 +264,9 @@ func BenchmarkClientServer(b *testing.B) {
 	defer ts.Close()
 	b.StartTimer()
 
+	c := NewClient([]string{ts.Listener.Addr().String()})
+	defer c.Close()
 	for i := 0; i < b.N; i++ {
-		c, err := Dial(ts.Listener.Addr().String())
-		if err != nil {
-			b.Fatalf("Dial: %v", err)
-		}
 		resp, err := c.Do(NewRequest(strings.NewReader("ping")))
 		if err != nil {
 			b.Fatalf("Do: %v", err)
@@ -280,7 +279,6 @@ func BenchmarkClientServer(b *testing.B) {
 		if body != "Hello world.\n" {
 			b.Fatalf("Got body: %v", body)
 		}
-		c.Close()
 	}
 
 	b.StopTimer()
@@ -292,14 +290,12 @@ func benchmarkClientServerParallel(b *testing.B, parallelism int) {
 		fmt.Fprintf(w, "Hello world.\n")
 	}))
 	defer ts.Close()
+	c := NewClient([]string{ts.Listener.Addr().String()})
+	defer c.Close()
 	b.ResetTimer()
 	b.SetParallelism(parallelism)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			c, err := Dial(ts.Listener.Addr().String())
-			if err != nil {
-				b.Fatalf("Dial: %v", err)
-			}
 			resp, err := c.Do(NewRequest(strings.NewReader("ping")))
 			if err != nil {
 				b.Fatalf("Do: %v", err)
@@ -312,7 +308,6 @@ func benchmarkClientServerParallel(b *testing.B, parallelism int) {
 			if body != "Hello world.\n" {
 				b.Fatalf("Got body: %v", body)
 			}
-			c.Close()
 		}
 	})
 }
