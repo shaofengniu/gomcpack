@@ -1,16 +1,16 @@
-package nftest
+package npctest
 
 import (
 	"fmt"
 	"net"
 	"sync"
 
-	"gitlab.baidu.com/niushaofeng/gomcpack/nf"
+	"gitlab.baidu.com/niushaofeng/gomcpack/npc"
 )
 
 type Server struct {
 	Listener net.Listener
-	Config   *nf.Server
+	Config   *npc.Server
 
 	// wg counts the number of outstanding requests on this server
 	// Close blocks until all requests are finished
@@ -45,16 +45,16 @@ func newLocalListener() net.Listener {
 
 // NewServer starts and returns a new server.
 // The caller should call Close when finished to shut it down
-func NewServer(handler nf.Handler) *Server {
+func NewServer(handler npc.Handler) *Server {
 	ts := NewUnstartedServer(handler)
 	ts.Start()
 	return ts
 }
 
-func NewUnstartedServer(handler nf.Handler) *Server {
+func NewUnstartedServer(handler npc.Handler) *Server {
 	return &Server{
 		Listener: newLocalListener(),
-		Config:   &nf.Server{Handler: handler},
+		Config:   &npc.Server{Handler: handler},
 	}
 }
 
@@ -95,10 +95,10 @@ func (s *Server) CloseClientConnections() {
 
 type waitGroupHandler struct {
 	s *Server
-	h nf.Handler
+	h npc.Handler
 }
 
-func (h *waitGroupHandler) Serve(w nf.ResponseWriter, r *nf.Request) {
+func (h *waitGroupHandler) Serve(w npc.ResponseWriter, r *npc.Request) {
 	h.s.wg.Add(1)
 	defer h.s.wg.Done()
 	h.h.Serve(w, r)

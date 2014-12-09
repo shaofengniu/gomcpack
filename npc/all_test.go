@@ -1,4 +1,4 @@
-package nf_test
+package npc_test
 
 import (
 	"fmt"
@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	. "gitlab.baidu.com/niushaofeng/gomcpack/nf"
-	"gitlab.baidu.com/niushaofeng/gomcpack/nf/nftest"
+	. "gitlab.baidu.com/niushaofeng/gomcpack/npc"
+	"gitlab.baidu.com/niushaofeng/gomcpack/npc/npctest"
 )
 
 func TestServerPingPong(t *testing.T) {
 	defer afterTest(t)
-	s := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+	s := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
 		content, err := ioutil.ReadAll(r.Body)
 		if string(content) != "ping" {
 			t.Errorf("expected ping, got %s", string(content))
@@ -60,7 +60,7 @@ func TestServerPingPong(t *testing.T) {
 func TestServerTimeouts(t *testing.T) {
 	defer afterTest(t)
 	reqNum := 0
-	ts := nftest.NewUnstartedServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+	ts := npctest.NewUnstartedServer(HandlerFunc(func(w ResponseWriter, r *Request) {
 		reqNum++
 		fmt.Fprintf(w, "req=%d", reqNum)
 	}))
@@ -111,7 +111,7 @@ func TestServerTimeouts(t *testing.T) {
 
 func TestClientWriteShutdown(t *testing.T) {
 	defer afterTest(t)
-	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {}))
+	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {}))
 	defer ts.Close()
 	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
 	if err != nil {
@@ -144,7 +144,7 @@ func TestCloseNotifier(t *testing.T) {
 	defer afterTest(t)
 	gotReq := make(chan bool, 1)
 	sawClose := make(chan bool, 1)
-	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
 		gotReq <- true
 		cc := w.(CloseNotifier).CloseNotify()
 		<-cc
@@ -258,7 +258,7 @@ func (l *errorListener) Addr() net.Addr {
 func BenchmarkClientServer(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
-	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
 		fmt.Fprintf(w, "Hello world.\n")
 	}))
 	defer ts.Close()
@@ -286,7 +286,7 @@ func BenchmarkClientServer(b *testing.B) {
 
 func benchmarkClientServerParallel(b *testing.B, parallelism int) {
 	b.ReportAllocs()
-	ts := nftest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
 		fmt.Fprintf(w, "Hello world.\n")
 	}))
 	defer ts.Close()

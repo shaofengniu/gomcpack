@@ -1,4 +1,4 @@
-package nf_test
+package npc_test
 
 import (
 	"fmt"

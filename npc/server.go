@@ -1,4 +1,4 @@
-package nf
+package npc
 
 import (
 	"bufio"
