@@ -74,3 +74,45 @@ func BenchmarkClientServer(b *testing.B) {
 		}
 	}
 }
+
+func benchmarkClientServerParallel(b *testing.B, parallelism int) {
+	b.ReportAllocs()
+	b.StopTimer()
+	handler, err := NewHandler(func(in Ping, out *Pong) error {
+		if in.Data != "ping" {
+			b.Fatalf("expected ping, got %q", in.Data)
+		}
+		out.Data = "pong"
+		return nil
+	})
+	if err != nil {
+		b.Fatalf("NewHandler: %v", err)
+	}
+
+	s := npctest.NewServer(handler)
+	defer s.Close()
+
+	c := NewClient([]string{s.Listener.Addr().String()})
+	defer c.Close()
+	b.SetParallelism(parallelism)
+	b.StartTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var pong Pong
+			err = c.Call(Ping{"ping"}, &pong)
+			if err != nil {
+				b.Fatalf("Call: %v", err)
+			}
+			if pong.Data != "pong" {
+				b.Fatalf("expected pong, got %q", pong.Data)
+			}
+		}
+	})
+}
+func BenchmarkClientServerParallel4(b *testing.B) {
+	benchmarkClientServerParallel(b, 4)
+}
+
+func BenchmarkClientServerParallel64(b *testing.B) {
+	benchmarkClientServerParallel(b, 64)
+}
