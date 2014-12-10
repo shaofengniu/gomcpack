@@ -6,6 +6,11 @@ import (
 	"io"
 )
 
+const (
+	HEADER_SIZE     = 36
+	HEADER_MAGICNUM = 0xfb709394
+)
+
 type Header struct {
 	Id       uint16   `json:"id"`
 	Version  uint16   `json:"version"`
@@ -15,8 +20,6 @@ type Header struct {
 	Reserved uint32   `json:"reserved"`
 	BodyLen  uint32   `json:"bodylen"`
 }
-
-const HEADER_SIZE = 36
 
 func (h *Header) Unmarshal(b []byte) error {
 	if len(b) < HEADER_SIZE {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"runtime"
@@ -69,11 +70,13 @@ func (c *conn) serve() {
 	for {
 		w, err := c.readRequest()
 		if err != nil {
+			c.server.debugf("read error on connection %s: %v", c.remoteAddr, err)
 			if err == io.EOF {
 				break
 			} else if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				break
 			}
+
 			// TODO: reply bad request
 			break
 		}
@@ -211,6 +214,7 @@ func (w *response) Write(data []byte) (n int, err error) {
 }
 
 func (w *response) finishRequest() {
+	io.Copy(ioutil.Discard, w.req.Body) //FIX: need we handle the error?
 	w.conn.buf.Flush()
 }
 
@@ -290,7 +294,7 @@ func (srv *Server) Serve(l net.Listener) error {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				srv.logf("nf: accept error: %v; retrying in %v", e, tempDelay)
+				srv.logf("npc: accept error: %v; retrying in %v", e, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -312,7 +316,16 @@ func (srv *Server) logf(format string, args ...interface{}) {
 	} else {
 		log.Printf(format, args...)
 	}
+}
 
+func (srv *Server) debugf(format string, args ...interface{}) {
+	/*
+		if srv.ErrorLog != nil {
+			srv.ErrorLog.Printf(format, args...)
+		} else {
+			log.Printf(format, args...)
+		}
+	*/
 }
 
 var (
@@ -371,14 +384,14 @@ type loggingConn struct {
 func (c *loggingConn) Write(p []byte) (n int, err error) {
 	log.Printf("%s.Write(%d) = ....", c.name, len(p))
 	n, err = c.Conn.Write(p)
-	log.Printf("%s.Write(%d) = %d, %v", c.name, len(p), n, err)
+	log.Printf("%s.Write(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
 	return
 }
 
 func (c *loggingConn) Read(p []byte) (n int, err error) {
 	log.Printf("%s.Read(%d) = ....", c.name, len(p))
 	n, err = c.Conn.Read(p)
-	log.Printf("%s.Read(%d) = %d, %v", c.name, len(p), n, err)
+	log.Printf("%s.Read(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
 	return
 }
 

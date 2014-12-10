@@ -2,7 +2,10 @@ package npc
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
+	"math/rand"
 	"strings"
 )
 
@@ -27,12 +30,17 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 	if err != nil {
 		return nil, err
 	}
+	if req.Header.MagicNum != HEADER_MAGICNUM {
+		return nil, fmt.Errorf("invalid magic number %x", req.Header.MagicNum)
+	}
 	req.Body = io.LimitReader(r, int64(req.Header.BodyLen))
 	return req, nil
 }
 
 func NewRequest(body io.Reader) *Request {
 	req := new(Request)
+	req.Header.LogId = rand.Uint32()
+	req.Header.MagicNum = HEADER_MAGICNUM
 	if body != nil {
 		switch v := body.(type) {
 		case *bytes.Buffer:

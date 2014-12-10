@@ -23,6 +23,33 @@ type Client struct {
 	freeconn map[string][]*clientConn
 }
 
+// debugClientConnections controls whether all client connections are
+// wrapped with a verbose logging wrapper
+var debugClientConnections = false
+
+func (c *Client) getConn(addr net.Addr) (cn *clientConn, err error) {
+	cn, ok := c.getFreeConn(addr)
+	if ok {
+		cn.extendDeadline()
+		return cn, nil
+	}
+	nc, err := c.dial(addr)
+	if err != nil {
+		return nil, err
+	}
+	if debugClientConnections {
+		nc = newLoggingConn("client", nc)
+	}
+	cn = &clientConn{
+		nc:   nc,
+		addr: addr,
+		rw:   bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc)),
+		c:    c,
+	}
+	cn.extendDeadline()
+	return cn, nil
+}
+
 func (c *Client) putFreeConn(addr net.Addr, cn *clientConn) {
 	c.Lock()
 	defer c.Unlock()
@@ -124,7 +151,7 @@ func (c *Client) Do(req *Request) (resp *Response, err error) {
 	return resp, nil
 }
 
-func (c *Client) withConn(fn func(*bufio.ReadWriter) error) error {
+func (c *Client) withConn(fn func(*bufio.ReadWriter) error) (err error) {
 	addr, err := c.selector.PickServer()
 	if err != nil {
 		return err
@@ -135,26 +162,6 @@ func (c *Client) withConn(fn func(*bufio.ReadWriter) error) error {
 	}
 	defer cn.condRelease(&err)
 	return fn(cn.rw)
-}
-
-func (c *Client) getConn(addr net.Addr) (cn *clientConn, err error) {
-	cn, ok := c.getFreeConn(addr)
-	if ok {
-		cn.extendDeadline()
-		return cn, nil
-	}
-	nc, err := c.dial(addr)
-	if err != nil {
-		return nil, err
-	}
-	cn = &clientConn{
-		nc:   nc,
-		addr: addr,
-		rw:   bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc)),
-		c:    c,
-	}
-	cn.extendDeadline()
-	return cn, nil
 }
 
 func (c *Client) dial(addr net.Addr) (net.Conn, error) {

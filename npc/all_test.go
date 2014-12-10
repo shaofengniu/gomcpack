@@ -152,7 +152,7 @@ func TestCloseNotifier(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
+	conn, err := net.DialTimeout("tcp", ts.Listener.Addr().String(), 10*time.Millisecond)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -259,7 +259,7 @@ func BenchmarkClientServer(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
 	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
-		fmt.Fprintf(w, "Hello world.\n")
+		fmt.Fprintf(w, "pong")
 	}))
 	defer ts.Close()
 	b.StartTimer()
@@ -276,7 +276,7 @@ func BenchmarkClientServer(b *testing.B) {
 			b.Fatalf("ReadAll: %v", err)
 		}
 		body := string(all)
-		if body != "Hello world.\n" {
+		if body != "pong" {
 			b.Fatalf("Got body: %v", body)
 		}
 	}
