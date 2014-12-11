@@ -44,12 +44,8 @@ func TestServerPingPong(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ReadResponse: %v", err)
 			}
-			content, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				t.Error(err)
-			}
-			if string(content) != "pong" {
-				t.Errorf("expected pong, got %s", string(content))
+			if string(resp.Body) != "pong" {
+				t.Errorf("expected pong, got %s", string(resp.Body))
 			}
 		}
 		conn.Close()
@@ -140,7 +136,7 @@ func TestClientWriteShutdown(t *testing.T) {
 	}
 }
 
-func TestCloseNotifier(t *testing.T) {
+func xTestCloseNotifier(t *testing.T) {
 	defer afterTest(t)
 	gotReq := make(chan bool, 1)
 	sawClose := make(chan bool, 1)
@@ -255,7 +251,7 @@ func (l *errorListener) Addr() net.Addr {
 	return dummyAddr("test-address")
 }
 
-func BenchmarkClientServer(b *testing.B) {
+func xBenchmarkClientServer(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
 	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
@@ -271,13 +267,9 @@ func BenchmarkClientServer(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Do: %v", err)
 		}
-		all, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			b.Fatalf("ReadAll: %v", err)
-		}
-		body := string(all)
+		body := string(resp.Body)
 		if body != "pong" {
-			b.Fatalf("Got body: %v", body)
+			b.Fatalf("Got body: %v", resp.Body)
 		}
 	}
 
@@ -287,10 +279,11 @@ func BenchmarkClientServer(b *testing.B) {
 func benchmarkClientServerParallel(b *testing.B, parallelism int) {
 	b.ReportAllocs()
 	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
-		fmt.Fprintf(w, "Hello world.\n")
+		fmt.Fprintf(w, "pong")
 	}))
 	defer ts.Close()
 	c := NewClient([]string{ts.Listener.Addr().String()})
+	c.Timeout = 5 * time.Second
 	defer c.Close()
 	b.ResetTimer()
 	b.SetParallelism(parallelism)
@@ -300,13 +293,9 @@ func benchmarkClientServerParallel(b *testing.B, parallelism int) {
 			if err != nil {
 				b.Fatalf("Do: %v", err)
 			}
-			all, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				b.Fatalf("ReadAll: %v", err)
-			}
-			body := string(all)
-			if body != "Hello world.\n" {
-				b.Fatalf("Got body: %v", body)
+			body := string(resp.Body)
+			if body != "pong" {
+				b.Fatalf("Got body: %v, bodylen: %d", resp.Body, resp.Header.BodyLen)
 			}
 		}
 	})
@@ -316,6 +305,6 @@ func BenchmarkClientServerParallel4(b *testing.B) {
 	benchmarkClientServerParallel(b, 4)
 }
 
-func BenchmarkClientServerParallel64(b *testing.B) {
-	benchmarkClientServerParallel(b, 64)
+func BenchmarkClientServerParallel16(b *testing.B) {
+	benchmarkClientServerParallel(b, 16)
 }

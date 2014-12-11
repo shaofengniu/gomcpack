@@ -62,9 +62,8 @@ func (c *conn) serve() {
 			buf = buf[:runtime.Stack(buf, false)]
 			c.server.logf("nf: panic serving %v: %v\n%s", c.remoteAddr, err, buf)
 		}
-
-		c.close()
 		c.setState(origConn, StateClosed)
+		c.close()
 	}()
 
 	for {
@@ -112,6 +111,16 @@ func (c *conn) readRequest() (w *response, err error) {
 }
 
 func (c *conn) setState(nc net.Conn, state ConnState) {
+	switch state {
+	case StateNew:
+		c.server.debugf("npc: connection new %s - %s", c.rwc.LocalAddr(), c.rwc.RemoteAddr())
+	case StateActive:
+		c.server.debugf("npc: connection active %s - %s", c.rwc.LocalAddr(), c.rwc.RemoteAddr())
+	case StateIdle:
+		c.server.debugf("npc: connection idle %s - %s", c.rwc.LocalAddr(), c.rwc.RemoteAddr())
+	case StateClosed:
+		c.server.debugf("npc: connection closed %s - %s", c.rwc.LocalAddr(), c.rwc.RemoteAddr())
+	}
 }
 
 func (c *conn) finalFlush() {
@@ -280,6 +289,9 @@ func (srv *Server) ListenAndServe() error {
 }
 
 func (srv *Server) Serve(l net.Listener) error {
+	if debugServerConnections {
+		l = newLoggingListener("listener", l)
+	}
 	defer l.Close()
 	var tempDelay time.Duration // how long to sleep on accept failure
 	for {
@@ -319,13 +331,14 @@ func (srv *Server) logf(format string, args ...interface{}) {
 }
 
 func (srv *Server) debugf(format string, args ...interface{}) {
-	/*
-		if srv.ErrorLog != nil {
-			srv.ErrorLog.Printf(format, args...)
-		} else {
-			log.Printf(format, args...)
-		}
-	*/
+	if !debugServerConnections {
+		return
+	}
+	if srv.ErrorLog != nil {
+		srv.ErrorLog.Printf(format, args...)
+	} else {
+		log.Printf(format, args...)
+	}
 }
 
 var (
@@ -382,14 +395,14 @@ type loggingConn struct {
 }
 
 func (c *loggingConn) Write(p []byte) (n int, err error) {
-	log.Printf("%s.Write(%d) = ....", c.name, len(p))
+	log.Printf("%s.Write(%d) %s -> %s", c.name, len(p), c.Conn.LocalAddr(), c.Conn.RemoteAddr())
 	n, err = c.Conn.Write(p)
 	log.Printf("%s.Write(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
 	return
 }
 
 func (c *loggingConn) Read(p []byte) (n int, err error) {
-	log.Printf("%s.Read(%d) = ....", c.name, len(p))
+	log.Printf("%s.Read(%d) %s <- %s", c.name, len(p), c.Conn.LocalAddr(), c.Conn.RemoteAddr())
 	n, err = c.Conn.Read(p)
 	log.Printf("%s.Read(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
 	return
@@ -399,6 +412,39 @@ func (c *loggingConn) Close() (err error) {
 	log.Printf("%s.Close() = ...", c.name)
 	err = c.Conn.Close()
 	log.Printf("%s.Close() = %v", c.name, err)
+	return
+}
+
+func newLoggingListener(baseName string, l net.Listener) net.Listener {
+	uniqNameMu.Lock()
+	defer uniqNameMu.Unlock()
+	uniqNameNext[baseName]++
+	return &loggingListener{
+		name:     fmt.Sprintf("%s-%d", baseName, uniqNameNext[baseName]),
+		Listener: l,
+	}
+}
+
+type loggingListener struct {
+	name string
+	net.Listener
+}
+
+func (l *loggingListener) Accept() (c net.Conn, err error) {
+	log.Printf("%s.Accept() %s", l.name, l.Listener.Addr())
+	c, err = l.Listener.Accept()
+	if err != nil {
+		log.Printf("%s.Accept() = , %v", l.name, err)
+	} else {
+		log.Printf("%s.Accept() = %s <- %s, %v", l.name, c.LocalAddr(), c.RemoteAddr(), err)
+	}
+	return
+}
+
+func (l *loggingListener) Close() (err error) {
+	log.Printf("%s.Close() = ...", l.name)
+	err = l.Listener.Close()
+	log.Printf("%s.Close() = %v", l.name, err)
 	return
 }
 
