@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -307,4 +309,45 @@ func BenchmarkClientServerParallel4(b *testing.B) {
 
 func BenchmarkClientServerParallel16(b *testing.B) {
 	benchmarkClientServerParallel(b, 16)
+}
+
+func BenchmarkServer(b *testing.B) {
+	b.ReportAllocs()
+	// Child process mode
+	if addr := os.Getenv("TEST_BENCH_SERVER_ADDR"); addr != "" {
+		c := NewClient([]string{addr})
+		defer c.Close()
+		n, err := strconv.Atoi(os.Getenv("TEST_BENCH_CLIENT_N"))
+		if err != nil {
+			panic(err)
+		}
+		for i := 0; i < n; i++ {
+			resp, err := c.Do(NewRequest(strings.NewReader("ping")))
+			if err != nil {
+				log.Panicf("Do: %v", err)
+			}
+			body := string(resp.Body)
+			if body != "pong" {
+				log.Panicf("Got body: %v", resp.Body)
+			}
+		}
+		os.Exit(0)
+		return
+	}
+	b.StopTimer()
+	ts := npctest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		fmt.Fprintf(w, "pong")
+	}))
+	defer ts.Close()
+	b.StartTimer()
+
+	cmd := exec.Command(os.Args[0], "-test.run=XXXX", "-test.bench=BenchmarkServer")
+	cmd.Env = append([]string{
+		fmt.Sprintf("TEST_BENCH_CLIENT_N=%d", b.N),
+		fmt.Sprintf("TEST_BENCH_SERVER_ADDR=%s", ts.Listener.Addr()),
+	}, os.Environ()...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		b.Errorf("Test failure: %v, with output: %s", err, out)
+	}
 }
