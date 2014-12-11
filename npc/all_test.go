@@ -311,6 +311,14 @@ func BenchmarkClientServerParallel16(b *testing.B) {
 	benchmarkClientServerParallel(b, 16)
 }
 
+// A benchmark for profiling the server without the client code.
+// The client code runs in a subprocess.
+//
+// For use like:
+//   $ go test -c
+//   $ ./npc.test -test.run=XX -test.bench=BenchmarkServer -test.benchtime=15s -test.cpuprofile=npc.prof
+//   $ go tool pprof npc.test npc.prof
+//   (pprof) web
 func BenchmarkServer(b *testing.B) {
 	b.ReportAllocs()
 	// Child process mode
