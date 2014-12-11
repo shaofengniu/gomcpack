@@ -2,7 +2,6 @@ package mcpacknpc
 
 import (
 	"bytes"
-	"io/ioutil"
 
 	"gitlab.baidu.com/niushaofeng/gomcpack/mcpack"
 	"gitlab.baidu.com/niushaofeng/gomcpack/npc"
@@ -26,9 +25,5 @@ func (c *Client) Call(args interface{}, reply interface{}) error {
 	if err != nil {
 		return err
 	}
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return mcpack.Unmarshal(content, reply)
+	return mcpack.Unmarshal(resp.Body, reply)
 }
