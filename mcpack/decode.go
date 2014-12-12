@@ -569,7 +569,6 @@ func (d *decodeState) key() []byte {
 	if klen <= 0 {
 		d.error(errEmptyKey)
 	}
-	println("d.off:", d.off, "kstart:", kstart, "klen:", klen)
 	return d.data[d.off+kstart : d.off+kstart+klen-1]
 }
 
