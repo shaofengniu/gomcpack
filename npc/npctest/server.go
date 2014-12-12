@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"gitlab.baidu.com/niushaofeng/gomcpack/npc"
+	"gitlab.baidu.com/ksarch/gomcpack/npc"
 )
 
 type Server struct {

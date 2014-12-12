@@ -3,8 +3,8 @@ package mcpacknpc
 import (
 	"bytes"
 
-	"gitlab.baidu.com/niushaofeng/gomcpack/mcpack"
-	"gitlab.baidu.com/niushaofeng/gomcpack/npc"
+	"gitlab.baidu.com/ksarch/gomcpack/mcpack"
+	"gitlab.baidu.com/ksarch/gomcpack/npc"
 )
 
 type Client struct {

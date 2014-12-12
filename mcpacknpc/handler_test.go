@@ -3,7 +3,7 @@ package mcpacknpc_test
 import (
 	"testing"
 
-	. "gitlab.baidu.com/niushaofeng/gomcpack/mcpacknpc"
+	. "gitlab.baidu.com/ksarch/gomcpack/mcpacknpc"
 	"gitlab.baidu.com/niushaofeng/gomcpack/npc/npctest"
 )
 

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	. "gitlab.baidu.com/niushaofeng/gomcpack/npc"
+	. "gitlab.baidu.com/ksarch/gomcpack/npc"
 	"gitlab.baidu.com/niushaofeng/gomcpack/npc/npctest"
 )
 

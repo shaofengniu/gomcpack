@@ -9,8 +9,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"gitlab.baidu.com/niushaofeng/gomcpack/mcpack"
-	"gitlab.baidu.com/niushaofeng/gomcpack/npc"
+	"gitlab.baidu.com/ksarch/gomcpack/mcpack"
+	"gitlab.baidu.com/ksarch/gomcpack/npc"
 )
 
 // Precompute the reflect type for error.  Can't use error directly
