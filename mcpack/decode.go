@@ -243,6 +243,23 @@ func (d *decodeState) string(v reflect.Value) {
 	v.SetString(val)
 }
 
+func (d *decodeState) stringInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	vlen := int(Int32(d.data[d.off:]))
+	d.off += 4 // content length
+
+	d.off += klen // name and 0x00
+
+	val := string(d.data[d.off : d.off+vlen-1])
+	d.off += vlen // value and 0x00
+
+	return val
+}
+
 // type(1) | name length(1) | content length(1) | raw name bytes |
 // 0x00 | content bytes | 0x00
 func (d *decodeState) shortString(v reflect.Value) {
@@ -260,6 +277,23 @@ func (d *decodeState) shortString(v reflect.Value) {
 	d.off += vlen // value and 0x00
 
 	v.SetString(val)
+}
+
+func (d *decodeState) shortStringInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	vlen := int(Int8(d.data[d.off:]))
+	d.off += 1 // content length
+
+	d.off += klen // name and 0x00
+
+	val := string(d.data[d.off : d.off+vlen-1])
+	d.off += vlen // value and 0x00
+
+	return val
 }
 
 // type(1) | name length(1) | content length(4) | raw name bytes |
@@ -281,6 +315,23 @@ func (d *decodeState) binary(v reflect.Value) {
 	v.SetBytes(val)
 }
 
+func (d *decodeState) binaryInterface() interface{} {
+	d.off += 1 //type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	vlen := int(Int32(d.data[d.off:]))
+	d.off += 4 // content length
+
+	d.off += klen // name and 0x00
+
+	val := d.data[d.off : d.off+vlen]
+	d.off += vlen // value
+
+	return val
+}
+
 // type(1) | name length(1) | content length(1) | raw name bytes |
 // 0x00 | content bytes
 func (d *decodeState) shortBinary(v reflect.Value) {
@@ -300,6 +351,23 @@ func (d *decodeState) shortBinary(v reflect.Value) {
 	v.SetBytes(val)
 }
 
+func (d *decodeState) shortBinaryInterface() interface{} {
+	d.off += 1 //type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	vlen := int(Int8(d.data[d.off:]))
+	d.off += 1 // content length
+
+	d.off += klen // name and 0x00
+
+	val := d.data[d.off : d.off+vlen]
+	d.off += vlen // value
+
+	return val
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(1)
 func (d *decodeState) int8(v reflect.Value) {
 	d.off += 1 // type
@@ -313,6 +381,20 @@ func (d *decodeState) int8(v reflect.Value) {
 	d.off += 1 // value
 
 	v.SetInt(int64(val))
+}
+
+func (d *decodeState) int8Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Int8(d.data[d.off:])
+	d.off += 1 // value
+
+	return val
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(1)
@@ -330,6 +412,20 @@ func (d *decodeState) uint8(v reflect.Value) {
 	v.SetUint(uint64(val))
 }
 
+func (d *decodeState) uint8Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Uint8(d.data[d.off:])
+	d.off += 1 // value
+
+	return val
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(2)
 func (d *decodeState) int16(v reflect.Value) {
 	d.off += 1 // type
@@ -343,6 +439,20 @@ func (d *decodeState) int16(v reflect.Value) {
 	d.off += 2 // value
 
 	v.SetInt(int64(val))
+}
+
+func (d *decodeState) int16Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Int16(d.data[d.off:])
+	d.off += 2 // value
+
+	return val
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(2)
@@ -360,6 +470,20 @@ func (d *decodeState) uint16(v reflect.Value) {
 	v.SetUint(uint64(val))
 }
 
+func (d *decodeState) uint16Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Uint16(d.data[d.off:])
+	d.off += 2 // value
+
+	return val
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(4)
 func (d *decodeState) int32(v reflect.Value) {
 	d.off += 1 // type
@@ -373,6 +497,20 @@ func (d *decodeState) int32(v reflect.Value) {
 	d.off += 4 // value
 
 	v.SetInt(int64(val))
+}
+
+func (d *decodeState) int32Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Int32(d.data[d.off:])
+	d.off += 4 // value
+
+	return val
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(4)
@@ -390,6 +528,20 @@ func (d *decodeState) uint32(v reflect.Value) {
 	v.SetUint(uint64(val))
 }
 
+func (d *decodeState) uint32Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Uint32(d.data[d.off:])
+	d.off += 4 // value
+
+	return val
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(8)
 func (d *decodeState) int64(v reflect.Value) {
 	d.off += 1 // type
@@ -403,6 +555,20 @@ func (d *decodeState) int64(v reflect.Value) {
 	d.off += 8 // value
 
 	v.SetInt(val)
+}
+
+func (d *decodeState) int64Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Int64(d.data[d.off:])
+	d.off += 8 // value
+
+	return val
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(8)
@@ -420,6 +586,20 @@ func (d *decodeState) uint64(v reflect.Value) {
 	v.SetUint(val)
 }
 
+func (d *decodeState) uint64Interface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Uint64(d.data[d.off:])
+	d.off += 8 // value
+
+	return val
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | 0x00
 func (d *decodeState) null(v reflect.Value) {
 	d.off += 1 // type
@@ -432,6 +612,20 @@ func (d *decodeState) null(v reflect.Value) {
 	d.off += 1 // value
 
 	v.Set(reflect.Zero(v.Type()))
+}
+
+// type(1) | name length(1) | raw name bytes | 0x00 | 0x00
+func (d *decodeState) nullInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	d.off += 1 // value
+
+	return nil
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | 0x00/0x01
@@ -453,6 +647,24 @@ func (d *decodeState) bool(v reflect.Value) {
 	}
 }
 
+func (d *decodeState) boolInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := d.data[d.off]
+	d.off += 1
+
+	if val == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(4)
 func (d *decodeState) float(v reflect.Value) {
 	d.off += 1 // type
@@ -466,6 +678,20 @@ func (d *decodeState) float(v reflect.Value) {
 	d.off += 4
 
 	v.SetFloat(float64(val))
+}
+
+func (d *decodeState) floatInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Float32(d.data[d.off:])
+	d.off += 4
+
+	return val
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(8)
@@ -483,9 +709,70 @@ func (d *decodeState) double(v reflect.Value) {
 	v.SetFloat(val)
 }
 
+func (d *decodeState) doubleInterface() interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	d.off += klen
+
+	val := Float64(d.data[d.off:])
+	d.off += 8
+
+	return val
+}
+
+func (d *decodeState) valueInterface() interface{} {
+	switch d.data[d.off] {
+	case MCPACKV2_OBJECT:
+		return d.objectInterface()
+	case MCPACKV2_ARRAY:
+		return d.arrayInterface()
+	case MCPACKV2_STRING:
+		return d.stringInterface()
+	case MCPACKV2_SHORT_STRING:
+		return d.shortStringInterface()
+	case MCPACKV2_BINARY:
+		return d.binaryInterface()
+	case MCPACKV2_SHORT_BINARY:
+		return d.shortBinaryInterface()
+	case MCPACKV2_INT8:
+		return d.int8Interface()
+	case MCPACKV2_INT16:
+		return d.int16Interface()
+	case MCPACKV2_INT32:
+		return d.int32Interface()
+	case MCPACKV2_INT64:
+		return d.int64Interface()
+	case MCPACKV2_UINT8:
+		return d.uint8Interface()
+	case MCPACKV2_UINT16:
+		return d.uint16Interface()
+	case MCPACKV2_UINT32:
+		return d.uint32Interface()
+	case MCPACKV2_UINT64:
+		return d.uint64Interface()
+	case MCPACKV2_BOOL:
+		return d.boolInterface()
+	case MCPACKV2_FLOAT:
+		return d.floatInterface()
+	case MCPACKV2_DOUBLE:
+		return d.doubleInterface()
+	case MCPACKV2_NULL:
+		return d.nullInterface()
+	}
+	return nil
+}
+
 // type(1) | name length(1) | item size(4) | raw name bytes | 0x00
 // | members number(4) | member1 | ... | memberN
 func (d *decodeState) object(v reflect.Value) {
+	if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
+		v.Set(reflect.ValueOf(d.objectInterface()))
+		return
+	}
+
 	d.off += 1 // type
 
 	klen := int(Int8(d.data[d.off:]))
@@ -498,11 +785,78 @@ func (d *decodeState) object(v reflect.Value) {
 
 	n := int(Int32(d.data[d.off:]))
 	d.off += 4 // member number
+
+	var mapElem reflect.Value
 	for i := 0; i < n; i++ {
 		subk := d.key()
-		subv := fieldByTag(v, subk)
+		var subv reflect.Value
+
+		if v.Kind() == reflect.Map {
+			elemType := v.Type().Elem()
+			if !mapElem.IsValid() {
+				mapElem = reflect.New(elemType).Elem()
+			} else {
+				mapElem.Set(reflect.Zero(elemType))
+			}
+			subv = mapElem
+		} else {
+			var f *field
+			fields := cachedTypeFields(v.Type())
+			for i := range fields {
+				ff := &fields[i]
+				if bytes.Equal(ff.nameBytes, subk) {
+					f = ff
+					break
+				}
+				if f == nil && ff.equalFold(ff.nameBytes, subk) {
+					f = ff
+				}
+			}
+			if f != nil {
+				subv = v
+				for _, i := range f.index {
+					if v.Kind() == reflect.Ptr {
+						if subv.IsNil() {
+							subv.Set(reflect.New(subv.Type()).Elem())
+						}
+						subv = subv.Elem()
+					}
+					subv = subv.Field(i)
+				}
+			}
+		}
+
 		d.value(subv)
+
+		// Write value back to map
+		if v.Kind() == reflect.Map {
+			kv := reflect.ValueOf(subk).Convert(v.Type().Key())
+			v.SetMapIndex(kv, subv)
+		}
 	}
+}
+
+func (d *decodeState) objectInterface() map[string]interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	// vlen := int(Int32(d.data[d.off:]))
+	d.off += 4 // content length
+
+	d.off += klen // name and 0x00
+
+	n := int(Int32(d.data[d.off:]))
+	d.off += 4 // member number
+
+	m := make(map[string]interface{})
+	for i := 0; i < n; i++ {
+		subk := d.key()
+		m[string(subk)] = d.valueInterface()
+	}
+
+	return m
 }
 
 //FIXME: fix when v is invalid
@@ -551,6 +905,28 @@ func (d *decodeState) array(v reflect.Value) {
 	if n == 0 && v.Kind() == reflect.Slice {
 		v.Set(reflect.MakeSlice(v.Type(), 0, 0))
 	}
+}
+
+func (d *decodeState) arrayInterface() []interface{} {
+	d.off += 1 // type
+
+	klen := int(Int8(d.data[d.off:]))
+	d.off += 1 // name length
+
+	// vlen := int(Int32(d.data[d.off:]))
+	d.off += 4 //  content length
+
+	//var key string
+	d.off += klen
+
+	n := int(Int32(d.data[d.off:]))
+	d.off += 4 // member number
+
+	v := make([]interface{}, n)
+	for i := 0; i < n; i++ {
+		v[i] = d.valueInterface()
+	}
+	return v
 }
 
 func (d *decodeState) key() []byte {
