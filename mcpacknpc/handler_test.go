@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	. "gitlab.baidu.com/ksarch/gomcpack/mcpacknpc"
-	"gitlab.baidu.com/niushaofeng/gomcpack/npc/npctest"
+	"gitlab.baidu.com/ksarch/gomcpack/npc/npctest"
 )
 
 type Ping struct {

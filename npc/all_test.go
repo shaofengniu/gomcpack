@@ -15,7 +15,7 @@ import (
 	"time"
 
 	. "gitlab.baidu.com/ksarch/gomcpack/npc"
-	"gitlab.baidu.com/niushaofeng/gomcpack/npc/npctest"
+	"gitlab.baidu.com/ksarch/gomcpack/npc/npctest"
 )
 
 func TestServerPingPong(t *testing.T) {
