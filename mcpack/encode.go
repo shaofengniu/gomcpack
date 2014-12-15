@@ -195,6 +195,9 @@ func nilEncoder(e *encodeState, k string, v reflect.Value) {
 
 	e.setType(MCPACKV2_NULL)
 	e.setKey(k, e.setKeyLen(k))
+
+	e.data[e.off] = 0
+	e.off++
 }
 
 func boolEncoder(e *encodeState, k string, v reflect.Value) {
