@@ -1,9 +1,11 @@
-package mcpack
+package mcpack_test
 
 import (
 	"bytes"
 	"reflect"
 	"testing"
+
+	. "gitlab.baidu.com/ksarch/gomcpack/mcpack"
 )
 
 type unmarshalTest struct {

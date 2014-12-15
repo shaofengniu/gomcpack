@@ -1,4 +1,4 @@
-package mcpack
+package mcpack_test
 
 import (
 	"bytes"
