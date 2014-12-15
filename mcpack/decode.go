@@ -7,7 +7,10 @@ import (
 	"runtime"
 )
 
-var errEmptyKey = errors.New("empty key")
+var (
+	errEmptyKey      = errors.New("empty key")
+	errUnexpectedEnd = errors.New("unexpected end")
+)
 
 func Unmarshal(data []byte, v interface{}) error {
 	var d decodeState
@@ -59,7 +62,13 @@ func (d *decodeState) unmarshal(v interface{}) (err error) {
 	}
 
 	d.value(rv)
-	return d.savedError
+	if d.savedError != nil {
+		return d.savedError
+	}
+	if d.off != len(d.data) {
+		return errUnexpectedEnd
+	}
+	return nil
 }
 
 // indirect walks down v allocating pointers as needed,
