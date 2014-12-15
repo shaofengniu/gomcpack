@@ -2,6 +2,7 @@ package mcpack_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	. "gitlab.baidu.com/ksarch/gomcpack/mcpack"
@@ -45,6 +46,14 @@ type Y struct {
 	Empty []string
 }
 
+type E struct {
+	Beta map[string]string
+}
+
+func (e *E) Error() string {
+	return fmt.Sprintf("len(key) exceeds %d", MCPACKV2_KEY_MAX_LEN)
+}
+
 var longVItem = [299]byte{250: '1', 251: '8', 252: '2', 253: '2', 297: 'S', 298: 'V'}
 
 var marshalTests = []marshalTest{
@@ -71,7 +80,7 @@ var marshalTests = []marshalTest{
 			MCPACKV2_INT64, 3, 'F', '3', 0, 1, 0, 0, 0, 0, 0, 0, 0},
 	},
 	getTestslongVItemW(),
-	getTestsKeyTooLongX(),
+	getTestsKeyBoundaryX(),
 	{
 		in: &Y{},
 		out: []byte{MCPACKV2_OBJECT, 0, 13, 0, 0, 0,
@@ -79,6 +88,7 @@ var marshalTests = []marshalTest{
 			MCPACKV2_NULL, 6, 'E', 'm', 'p', 't', 'y', 0, 0,
 		},
 	},
+	getTestsKeyTooLongE(),
 }
 
 func getTestslongVItemW() marshalTest {
@@ -94,9 +104,9 @@ func getTestslongVItemW() marshalTest {
 	}
 }
 
-func getTestsKeyTooLongX() marshalTest {
+func getTestsKeyBoundaryX() marshalTest {
 	beta := make(map[string]string)
-	key := string(longVItem[:])
+	key := string(longVItem[:254])
 	beta[key] = "SV"
 
 	deta := [2]int16{-18, -22}
@@ -122,9 +132,33 @@ func getTestsKeyTooLongX() marshalTest {
 	}
 }
 
+func getTestsKeyTooLongE() marshalTest {
+	beta := make(map[string]string)
+	key := string(longVItem[:255])
+	beta[key] = "SV"
+	in := &E{Beta: beta}
+
+	return marshalTest{
+		in:  in,
+		out: nil, // an nil out impiles an error
+	}
+}
+
 func TestMarshal(t *testing.T) {
 	for _, tt := range marshalTests {
 		b, err := Marshal(tt.in)
+
+		// an error expected
+		if tt.out == nil {
+			if err == nil {
+				t.Error("an error expected.")
+			} else if tt.in.(error).Error() != err.Error() {
+				t.Error("not the error expected.")
+			}
+			continue
+		}
+
+		// failed
 		if err != nil {
 			t.Error(err)
 		}

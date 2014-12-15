@@ -1,6 +1,7 @@
 package mcpack
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"sort"
@@ -46,7 +47,10 @@ func (e *encodeState) setType(t byte) {
 }
 
 func (e *encodeState) setKeyLen(k string) (l int) {
-	l = min(len(k), MCPACKV2_KEY_MAX_LEN)
+	if l = len(k); l > MCPACKV2_KEY_MAX_LEN {
+		panic(fmt.Errorf("len(key) exceeds %d", MCPACKV2_KEY_MAX_LEN))
+	}
+
 	if l > 0 {
 		e.data[e.off] = byte(l + 1)
 	} else {
