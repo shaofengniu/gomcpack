@@ -948,25 +948,6 @@ func (d *decodeState) key() []byte {
 	return d.data[d.off+kstart : d.off+kstart+klen-1]
 }
 
-func fieldByTag(v reflect.Value, name []byte) reflect.Value {
-	var f *field
-	fields := cachedTypeFields(v.Type())
-	for i := range fields {
-		ff := &fields[i]
-		if bytes.Equal(ff.nameBytes, name) {
-			f = ff
-			break
-		}
-		if f == nil && ff.equalFold(ff.nameBytes, name) {
-			f = ff
-		}
-	}
-	if f != nil {
-		return fieldByIndex(v, f.index)
-	}
-	return reflect.Value{}
-}
-
 type InvalidUnmarshalError struct {
 	Type reflect.Type
 }
