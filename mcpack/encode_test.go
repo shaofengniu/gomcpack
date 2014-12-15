@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	. "gitlab.baidu.com/yanyu/gomcpack/mcpack"
+	. "gitlab.baidu.com/ksarch/gomcpack/mcpack"
 )
 
 type marshalTest struct {
