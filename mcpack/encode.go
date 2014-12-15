@@ -32,6 +32,38 @@ func max(l, r int) int {
 	}
 }
 
+func min(l, r int) int {
+	if l >= r {
+		return r
+	} else {
+		return l
+	}
+}
+
+func (e *encodeState) setType(t byte) {
+	e.data[e.off] = t
+	e.off++
+}
+
+func (e *encodeState) setKeyLen(k string) (l int) {
+	l = min(len(k), MCPACKV2_KEY_MAX_LEN)
+	if l > 0 {
+		e.data[e.off] = byte(l + 1)
+	} else {
+		e.data[e.off] = 0
+	}
+	e.off++
+	return
+}
+
+func (e *encodeState) setKey(k string, l int) {
+	if l > 0 {
+		e.off += copy(e.data[e.off:], k[0:l])
+		e.data[e.off] = 0
+		e.off++
+	}
+}
+
 func (e *encodeState) resizeIfNeeded(n int) {
 	if e.off+n >= cap(e.data) {
 		newcap := max(cap(e.data)*2, e.off+n)
@@ -160,43 +192,16 @@ func invalidValueEncoder(e *encodeState, k string, v reflect.Value) {
 
 func nilEncoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 1)
-	e.data[e.off] = MCPACKV2_NULL
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
-
-	e.data[e.off] = 0
-	e.off++
+	e.setType(MCPACKV2_NULL)
+	e.setKey(k, e.setKeyLen(k))
 }
 
 func boolEncoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 1)
-	e.data[e.off] = MCPACKV2_BOOL
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_BOOL)
+	e.setKey(k, e.setKeyLen(k))
 
 	if v.Bool() {
 		e.data[e.off] = 1
@@ -209,21 +214,9 @@ func boolEncoder(e *encodeState, k string, v reflect.Value) {
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes
 func int8Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_INT8
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_INT8)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutInt8(e.data[e.off:], int8(v.Int()))
 	e.off += 1
@@ -232,21 +225,9 @@ func int8Encoder(e *encodeState, k string, v reflect.Value) {
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes
 func int16Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_INT16
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_INT16)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutInt16(e.data[e.off:], int16(v.Int()))
 	e.off += 2
@@ -255,21 +236,9 @@ func int16Encoder(e *encodeState, k string, v reflect.Value) {
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes
 func int32Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_INT32
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_INT32)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutInt32(e.data[e.off:], int32(v.Int()))
 	e.off += 4
@@ -278,21 +247,9 @@ func int32Encoder(e *encodeState, k string, v reflect.Value) {
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes
 func int64Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_INT64
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_INT64)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutInt64(e.data[e.off:], v.Int())
 	e.off += 8
@@ -300,84 +257,36 @@ func int64Encoder(e *encodeState, k string, v reflect.Value) {
 
 func uint8Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_UINT8
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_UINT8)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutUint8(e.data[e.off:], uint8(v.Uint()))
 	e.off += 1
 }
 func uint16Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_UINT16
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_UINT16)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutUint16(e.data[e.off:], uint16(v.Uint()))
 	e.off += 2
 }
 func uint32Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_UINT32
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_UINT32)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutUint32(e.data[e.off:], uint32(v.Uint()))
 	e.off += 4
 }
 func uint64Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_UINT64
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_UINT64)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutUint64(e.data[e.off:], uint64(v.Uint()))
 	e.off += 8
@@ -385,21 +294,9 @@ func uint64Encoder(e *encodeState, k string, v reflect.Value) {
 
 func float32Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 4)
-	e.data[e.off] = MCPACKV2_FLOAT
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_FLOAT)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutFloat32(e.data[e.off:], float32(v.Float()))
 	e.off += 4
@@ -407,21 +304,9 @@ func float32Encoder(e *encodeState, k string, v reflect.Value) {
 
 func float64Encoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + len(k) + 1 + 8)
-	e.data[e.off] = MCPACKV2_DOUBLE
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
+	e.setType(MCPACKV2_DOUBLE)
+	e.setKey(k, e.setKeyLen(k))
 
 	PutFloat64(e.data[e.off:], v.Float())
 	e.off += 8
@@ -429,59 +314,71 @@ func float64Encoder(e *encodeState, k string, v reflect.Value) {
 
 func stringEncoder(e *encodeState, k string, v reflect.Value) {
 	//type(1) | klen(1) | vlen(4) | key(len(k)) | 0x00 | value | 0x00
+	//max(short_vitem, long_vitem)
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + v.Len() + 1)
-	e.data[e.off] = MCPACKV2_STRING
-	e.off++
 
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	vlenpos := e.off // content length pos
-	e.off += 4
-
-	if len(k) > 0 { // key and 0x00
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
+	vlen := len(v.String()) + 1
+	if vlen < MAX_SHORT_VITEM_LEN {
+		//type(1) | klen(1) | vlen(1) | key(len(k)) | 0x00 | value | 0x00
+		//type(1)
+		e.setType(MCPACKV2_SHORT_STRING)
+		//klen(1)
+		l := e.setKeyLen(k)
+		//vlen(1)
+		PutUint8(e.data[e.off:], uint8(vlen))
 		e.off++
+		//key(k[0:l]) | 0x00
+		e.setKey(k, l)
+	} else {
+		//type(1) | klen(1) | vlen(4) | key(len(k)) | 0x00 | value | 0x00
+		//type(1)
+		e.setType(MCPACKV2_STRING)
+		//klen(l)
+		l := e.setKeyLen(k)
+		//vlen(4)
+		PutUint32(e.data[e.off:], uint32(vlen))
+		e.off += 4
+		//key(k[:l]) | 0x00
+		e.setKey(k, l)
 	}
 
-	vpos := e.off
+	//value | 0x00
 	e.off += copy(e.data[e.off:], v.String())
-	e.data[e.off] = 0 // value and 0x00
+	e.data[e.off] = 0
 	e.off++
-
-	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
 }
 
 func binaryEncoder(e *encodeState, k string, v reflect.Value) {
 	//type(1) | klen(1) | vlen(4) | key(len(k)) | 0x00 | value
+	//max(short_vitem, long_vitem)
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + v.Len())
-	e.data[e.off] = MCPACKV2_BINARY
-	e.off++
 
-	if len(k) > 0 { // key len
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
-	vlenpos := e.off
-	e.off += 4 // content length
-
-	if len(k) > 0 { // key and 0x00
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
+	vlen := len(v.Bytes())
+	if vlen < MAX_SHORT_VITEM_LEN {
+		//type(1) | klen(1) | vlen(1) | key(len(k)) | 0x00 | value
+		//type(1)
+		e.setType(MCPACKV2_SHORT_BINARY)
+		//klen(1)
+		l := e.setKeyLen(k)
+		//vlen(1)
+		PutUint8(e.data[e.off:], uint8(vlen))
 		e.off++
+		//key(k[:l])) | 0x00
+		e.setKey(k, l)
+	} else {
+		//type(1) | klen(1) | vlen(4) | key(len(k)) | 0x00 | value
+		//type(1)
+		e.setType(MCPACKV2_BINARY)
+		//klen(1)
+		l := e.setKeyLen(k)
+		//vlen(4)
+		PutUint32(e.data[e.off:], uint32(vlen))
+		e.off += 4
+		//key(k[0:l]) | 0x00
+		e.setKey(k, l)
 	}
-	vpos := e.off
-	e.off += copy(e.data[e.off:], v.Bytes()) //value
-
-	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
+	//value
+	e.off += copy(e.data[e.off:], v.Bytes())
 }
 
 func interfaceEncoder(e *encodeState, k string, v reflect.Value) {
@@ -500,31 +397,21 @@ type structEncoder struct {
 func (se *structEncoder) encode(e *encodeState, k string, v reflect.Value) {
 	// type(1) | klen(1) | vlen(4) | key(len(k)) | 0x00 | field number(4)
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + 4)
-
-	e.data[e.off] = MCPACKV2_OBJECT
-	e.off++
-
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
+	//type(1)
+	e.setType(MCPACKV2_OBJECT)
+	//klen(1)
+	l := e.setKeyLen(k)
+	//vlen defer
 	vlenpos := e.off
 	e.off += 4
-
-	if len(k) > 0 {
-		n := copy(e.data[e.off:], k)
-		e.off += n
-		e.data[e.off] = 0
-		e.off++
-	}
-
+	//key(k[:l]) | 0x00
+	e.setKey(k, l)
+	//vpos defer
 	vpos := e.off
+	//count(4)
 	PutInt32(e.data[e.off:], int32(len(se.fields)))
 	e.off += 4
-
+	//elem
 	for i, f := range se.fields {
 		fv := fieldByIndex(v, f.index)
 		if !fv.IsValid() || f.omitEmpty && isEmptyValue(fv) {
@@ -532,6 +419,7 @@ func (se *structEncoder) encode(e *encodeState, k string, v reflect.Value) {
 		}
 		se.fieldEncs[i](e, f.name, fv)
 	}
+	//vlen
 	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
 }
 
@@ -553,27 +441,16 @@ type mapEncoder struct {
 
 func (me *mapEncoder) encode(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + 4)
-
-	e.data[e.off] = MCPACKV2_OBJECT
-	e.off++
-
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
+	//type(1)
+	e.setType(MCPACKV2_OBJECT)
+	//klen(1)
+	l := e.setKeyLen(k)
+	//vlen defer
 	vlenpos := e.off
 	e.off += 4
-
-	if len(k) > 0 {
-		n := copy(e.data[e.off:], k)
-		e.off += n
-		e.data[e.off] = 0
-		e.off++
-	}
-
+	//key(k[:l]) | 0x00
+	e.setKey(k, l)
+	//vpos defer
 	vpos := e.off
 	PutInt32(e.data[e.off:], int32(len(v.MapKeys())))
 	e.off += 4
@@ -581,6 +458,7 @@ func (me *mapEncoder) encode(e *encodeState, k string, v reflect.Value) {
 	for _, k := range v.MapKeys() {
 		me.elemEnc(e, k.String(), v.MapIndex(k))
 	}
+	//vlen
 	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
 }
 
@@ -620,34 +498,25 @@ func (ae *arrayEncoder) encode(e *encodeState, k string, v reflect.Value) {
 	// type(1) | klen(1) | vlen(4) | key(len(0)) | 0x00 | field
 	// number(4)
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + 4)
-
-	e.data[e.off] = MCPACKV2_ARRAY
-	e.off++
-
-	if len(k) > 0 {
-		e.data[e.off] = byte(len(k) + 1)
-	} else {
-		e.data[e.off] = 0
-	}
-	e.off++
-
+	//type(1)
+	e.setType(MCPACKV2_ARRAY)
+	//klen(k[:l])
+	l := e.setKeyLen(k)
+	//vlen defer
 	vlenpos := e.off
 	e.off += 4
-
-	if len(k) > 0 {
-		e.off += copy(e.data[e.off:], k)
-		e.data[e.off] = 0
-		e.off++
-	}
-
+	//key(k[:l]) | 0x00
+	e.setKey(k, l)
+	//vpos defer
 	vpos := e.off
+	//count(4)
 	PutInt32(e.data[e.off:], int32(v.Len()))
 	e.off += 4
 
 	for i := 0; i < v.Len(); i++ {
 		ae.elemEnc(e, "", v.Index(i))
 	}
-
+	//vlen
 	PutInt32(e.data[vlenpos:], int32(e.off-vpos))
 }
 
@@ -740,6 +609,7 @@ func typeFields(t reflect.Type) []field {
 
 			for i := 0; i < f.typ.NumField(); i++ {
 				sf := f.typ.Field(i)
+				//not basic type
 				if sf.PkgPath != "" {
 					continue
 				}
@@ -771,12 +641,13 @@ func typeFields(t reflect.Type) []field {
 						typ:       ft,
 						omitEmpty: opts.Contains("omitempty"),
 					}))
+					//?? why append twice ?
 					if count[f.typ] > 1 {
 						fields = append(fields, fields[len(fields)-1])
 					}
 					continue
 				}
-
+				//struct var of the same type can only be processed once at the same level
 				nextCount[ft]++
 				if nextCount[ft] == 1 {
 					next = append(next, fillField(field{name: ft.Name(), index: index, typ: ft}))
