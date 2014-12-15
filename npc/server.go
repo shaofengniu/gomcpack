@@ -2,6 +2,7 @@ package npc
 
 import (
 	"bufio"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -397,14 +398,14 @@ type loggingConn struct {
 func (c *loggingConn) Write(p []byte) (n int, err error) {
 	log.Printf("%s.Write(%d) %s -> %s", c.name, len(p), c.Conn.LocalAddr(), c.Conn.RemoteAddr())
 	n, err = c.Conn.Write(p)
-	log.Printf("%s.Write(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
+	log.Printf("%s.Write(%d) = %d, %v\n%s", c.name, len(p), n, err, hex.Dump(p[:n]))
 	return
 }
 
 func (c *loggingConn) Read(p []byte) (n int, err error) {
 	log.Printf("%s.Read(%d) %s <- %s", c.name, len(p), c.Conn.LocalAddr(), c.Conn.RemoteAddr())
 	n, err = c.Conn.Read(p)
-	log.Printf("%s.Read(%d) = %d, %v\n%v", c.name, len(p), n, err, p[:n])
+	log.Printf("%s.Read(%d) = %d, %v\n%s", c.name, len(p), n, err, hex.Dump(p[:n]))
 	return
 }
 
