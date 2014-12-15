@@ -41,6 +41,10 @@ type X struct {
 	Deta [2]int16
 }
 
+type Y struct {
+	Empty []string
+}
+
 var longVItem = [299]byte{250: '1', 251: '8', 252: '2', 253: '2', 297: 'S', 298: 'V'}
 
 var marshalTests = []marshalTest{
@@ -68,6 +72,13 @@ var marshalTests = []marshalTest{
 	},
 	getTestslongVItemW(),
 	getTestsKeyTooLongX(),
+	{
+		in: &Y{},
+		out: []byte{MCPACKV2_OBJECT, 0, 13, 0, 0, 0,
+			1, 0, 0, 0,
+			MCPACKV2_NULL, 6, 'E', 'm', 'p', 't', 'y', 0, 0,
+		},
+	},
 }
 
 func getTestslongVItemW() marshalTest {
