@@ -482,10 +482,6 @@ type sliceEncoder struct {
 }
 
 func (se *sliceEncoder) encode(e *encodeState, k string, v reflect.Value) {
-	if v.IsNil() {
-		nilEncoder(e, k, v)
-		return
-	}
 	se.arrayEnc(e, k, v)
 }
 

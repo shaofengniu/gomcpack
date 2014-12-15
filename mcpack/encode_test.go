@@ -83,9 +83,9 @@ var marshalTests = []marshalTest{
 	getTestsKeyBoundaryX(),
 	{
 		in: &Y{},
-		out: []byte{MCPACKV2_OBJECT, 0, 13, 0, 0, 0,
+		out: []byte{MCPACKV2_OBJECT, 0, 20, 0, 0, 0,
 			1, 0, 0, 0,
-			MCPACKV2_NULL, 6, 'E', 'm', 'p', 't', 'y', 0, 0,
+			MCPACKV2_ARRAY, 6, 4, 0, 0, 0, 'E', 'm', 'p', 't', 'y', 0, 0, 0, 0, 0,
 		},
 	},
 	getTestsKeyTooLongE(),
