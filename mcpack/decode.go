@@ -935,11 +935,11 @@ func (d *decodeState) key() []byte {
 	case MCPACKV2_INT8, MCPACKV2_INT16, MCPACKV2_INT32, MCPACKV2_INT64,
 		MCPACKV2_UINT8, MCPACKV2_UINT16, MCPACKV2_UINT32, MCPACKV2_UINT64,
 		MCPACKV2_BOOL, MCPACKV2_FLOAT, MCPACKV2_DOUBLE, MCPACKV2_NULL:
-		kstart = 2
+		kstart = 2 // type + klen
 	case MCPACKV2_SHORT_BINARY, MCPACKV2_SHORT_STRING:
-		kstart = 4
+		kstart = 3 // type + klen + vlen(1)
 	case MCPACKV2_BINARY, MCPACKV2_STRING, MCPACKV2_OBJECT, MCPACKV2_ARRAY:
-		kstart = 6
+		kstart = 6 // type + klen + vlen(4)
 	}
 	klen := int(Int8(d.data[d.off+1:]))
 	if klen <= 0 {

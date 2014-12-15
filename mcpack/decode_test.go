@@ -19,6 +19,10 @@ type obj struct {
 	Foo string `json:"foo"`
 }
 
+type ping struct {
+	Data string
+}
+
 type UV struct {
 	F1 *UU    `json:"F1"`
 	F2 int32  `json:"F2"`
@@ -67,6 +71,12 @@ var unmarshalTests = []unmarshalTest{
 			MCPACKV2_STRING, 0, 4, 0, 0, 0, 'f', 'o', 'o', 0},
 		ptr: new([]string),
 		out: []string{"foo"},
+	},
+
+	{
+		in:  []byte{MCPACKV2_OBJECT, 0, 17, 0, 0, 0, 1, 0, 0, 0, 208, 5, 5, 'D', 'a', 't', 'a', 0, 'p', 'i', 'n', 'g', 0},
+		ptr: new(ping),
+		out: ping{Data: "ping"},
 	},
 }
 
