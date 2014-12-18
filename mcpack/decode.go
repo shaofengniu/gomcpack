@@ -950,7 +950,7 @@ func (d *decodeState) key() []byte {
 	case MCPACKV2_BINARY, MCPACKV2_STRING, MCPACKV2_OBJECT, MCPACKV2_ARRAY:
 		kstart = 6 // type + klen + vlen(4)
 	}
-	klen := int(Int8(d.data[d.off+1:]))
+	klen := int(Uint8(d.data[d.off+1:]))
 	if klen <= 0 {
 		d.error(errEmptyKey)
 	}
