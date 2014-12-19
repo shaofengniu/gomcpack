@@ -353,7 +353,7 @@ func binaryEncoder(e *encodeState, k string, v reflect.Value) {
 	e.resizeIfNeeded(1 + 1 + 4 + len(k) + 1 + v.Len())
 
 	vlen := len(v.Bytes())
-	if vlen < MAX_SHORT_VITEM_LEN {
+	if vlen <= MAX_SHORT_VITEM_LEN {
 		//type(1) | klen(1) | vlen(1) | key(len(k)) | 0x00 | value
 		//type(1)
 		e.setType(MCPACKV2_SHORT_BINARY)
