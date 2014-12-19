@@ -185,19 +185,19 @@ func (d *decodeState) next() []byte {
 	vlen := 0
 	switch typ {
 	case MCPACKV2_OBJECT:
-		vlen = int(Int32(d.data[d.off:]))
+		vlen = int(Uint32(d.data[d.off:]))
 		d.off += 4
 	case MCPACKV2_ARRAY:
-		vlen = int(Int32(d.data[d.off:]))
+		vlen = int(Uint32(d.data[d.off:]))
 		d.off += 4
 	case MCPACKV2_STRING:
-		vlen = int(Int32(d.data[d.off:]))
+		vlen = int(Uint32(d.data[d.off:]))
 		d.off += 4
 	case MCPACKV2_SHORT_STRING:
 		vlen = int(Uint8(d.data[d.off:]))
 		d.off += 1
 	case MCPACKV2_BINARY:
-		vlen = int(Int32(d.data[d.off:]))
+		vlen = int(Uint32(d.data[d.off:]))
 		d.off += 4
 	case MCPACKV2_SHORT_BINARY:
 		vlen = int(Uint8(d.data[d.off:]))
@@ -241,7 +241,7 @@ func (d *decodeState) string(v reflect.Value) {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	vlen := int(Int32(d.data[d.off:]))
+	vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
@@ -258,7 +258,7 @@ func (d *decodeState) stringInterface() interface{} {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	vlen := int(Int32(d.data[d.off:]))
+	vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
@@ -313,7 +313,7 @@ func (d *decodeState) binary(v reflect.Value) {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	vlen := int(Int32(d.data[d.off:]))
+	vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
@@ -330,7 +330,7 @@ func (d *decodeState) binaryInterface() interface{} {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	vlen := int(Int32(d.data[d.off:]))
+	vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
@@ -792,12 +792,12 @@ func (d *decodeState) object(v reflect.Value) {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	// vlen := int(Int32(d.data[d.off:]))
+	// vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
 
-	n := int(Int32(d.data[d.off:]))
+	n := int(Uint32(d.data[d.off:]))
 	d.off += 4 // member number
 
 	var mapElem reflect.Value
@@ -856,12 +856,12 @@ func (d *decodeState) objectInterface() map[string]interface{} {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	// vlen := int(Int32(d.data[d.off:]))
+	// vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 // content length
 
 	d.off += klen // name and 0x00
 
-	n := int(Int32(d.data[d.off:]))
+	n := int(Uint32(d.data[d.off:]))
 	d.off += 4 // member number
 
 	m := make(map[string]interface{})
@@ -882,13 +882,13 @@ func (d *decodeState) array(v reflect.Value) {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	// vlen := int(Int32(d.data[d.off:]))
+	// vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 //  content length
 
 	//var key string
 	d.off += klen
 
-	n := int(Int32(d.data[d.off:]))
+	n := int(Uint32(d.data[d.off:]))
 	d.off += 4 // member number
 
 	if v.Kind() == reflect.Slice {
@@ -927,13 +927,13 @@ func (d *decodeState) arrayInterface() []interface{} {
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
 
-	// vlen := int(Int32(d.data[d.off:]))
+	// vlen := int(Uint32(d.data[d.off:]))
 	d.off += 4 //  content length
 
 	//var key string
 	d.off += klen
 
-	n := int(Int32(d.data[d.off:]))
+	n := int(Uint32(d.data[d.off:]))
 	d.off += 4 // member number
 
 	v := make([]interface{}, n)
