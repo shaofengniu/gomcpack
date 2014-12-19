@@ -782,6 +782,11 @@ func (d *decodeState) object(v reflect.Value) {
 		return
 	}
 
+	// make map
+	if v.Kind() == reflect.Map && v.IsNil() {
+		v.Set(reflect.MakeMap(v.Type()))
+	}
+
 	d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
@@ -824,7 +829,7 @@ func (d *decodeState) object(v reflect.Value) {
 			if f != nil {
 				subv = v
 				for _, i := range f.index {
-					if v.Kind() == reflect.Ptr {
+					if subv.Kind() == reflect.Ptr {
 						if subv.IsNil() {
 							subv.Set(reflect.New(subv.Type()).Elem())
 						}
