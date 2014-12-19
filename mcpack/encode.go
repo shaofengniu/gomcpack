@@ -33,14 +33,6 @@ func max(l, r int) int {
 	}
 }
 
-func min(l, r int) int {
-	if l >= r {
-		return r
-	} else {
-		return l
-	}
-}
-
 func (e *encodeState) setType(t byte) {
 	e.data[e.off] = t
 	e.off++
