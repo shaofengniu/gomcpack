@@ -107,6 +107,10 @@ func (d *decodeState) indirect(v reflect.Value, decodingNull bool) (Unmarshaler,
 		}
 
 		if v.IsNil() {
+			// nil pointer
+			if d.data[d.off] == MCPACKV2_NULL {
+				return nil, v
+			}
 			v.Set(reflect.New(v.Type().Elem()))
 		}
 
