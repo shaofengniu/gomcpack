@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-func Int8(b []byte) int8 {
+/*func Int8(b []byte) int8 {
 	return int8(b[0])
 }
 
@@ -20,7 +20,7 @@ func Int16(b []byte) int16 {
 func PutInt16(b []byte, v int16) {
 	b[0] = byte(uint16(v))
 	b[1] = byte(uint16(v) >> 8)
-}
+}*/
 
 func Int32(b []byte) int32 {
 	return int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
