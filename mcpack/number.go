@@ -49,7 +49,7 @@ func PutInt64(b []byte, v int64) {
 	b[7] = byte(uint64(v) >> 56)
 }
 
-func Uint8(b []byte) uint8 {
+/*func Uint8(b []byte) uint8 {
 	return uint8(b[0])
 }
 
@@ -64,7 +64,7 @@ func Uint16(b []byte) uint16 {
 func PutUint16(b []byte, v uint16) {
 	b[0] = byte(v)
 	b[1] = byte(v >> 8)
-}
+}*/
 
 func Uint32(b []byte) uint32 {
 	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
