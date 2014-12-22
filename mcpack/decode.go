@@ -383,21 +383,24 @@ func (d *decodeState) shortBinaryInterface() interface{} {
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(1)
 func (d *decodeState) int8(v reflect.Value) {
-	d.off += 1 // type
+	// unsupported in libmcpack, int32 employed
+	/*d.off += 1 // type
 
-	klen := int(Uint8(d.data[d.off:]))
-	d.off += 1 // name length
+		klen := int(Uint8(d.data[d.off:]))
+		d.off += 1 // name length
 
-	d.off += klen
+		d.off += klen
 
-	val := Int8(d.data[d.off:])
-	d.off += 1 // value
+		val := Int8(d.data[d.off:])
+	    d.off += 1 //value
 
-	v.SetInt(int64(val))
+		v.SetInt(int64(val))*/
+	d.int32(v)
 }
 
 func (d *decodeState) int8Interface() interface{} {
-	d.off += 1 // type
+	// unsupported in libmcpack, int32 employed
+	/*d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
@@ -407,12 +410,15 @@ func (d *decodeState) int8Interface() interface{} {
 	val := Int8(d.data[d.off:])
 	d.off += 1 // value
 
-	return val
+	return val*/
+
+	return d.int32Interface()
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(1)
 func (d *decodeState) uint8(v reflect.Value) {
-	d.off += 1 // type
+	// unsupported in libmcpack, uint32 employed
+	/*d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
@@ -422,11 +428,14 @@ func (d *decodeState) uint8(v reflect.Value) {
 	val := Uint8(d.data[d.off:])
 	d.off += 1 // value
 
-	v.SetUint(uint64(val))
+	v.SetUint(uint64(val))*/
+
+	d.uint32(v)
 }
 
 func (d *decodeState) uint8Interface() interface{} {
-	d.off += 1 // type
+	// unsupported in libmcpack, uint32 employed
+	/*d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
@@ -436,26 +445,34 @@ func (d *decodeState) uint8Interface() interface{} {
 	val := Uint8(d.data[d.off:])
 	d.off += 1 // value
 
-	return val
+	return val*/
+
+	return d.uint32Interface()
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(2)
 func (d *decodeState) int16(v reflect.Value) {
-	d.off += 1 // type
+	// unsupported in libmcpack, int32 employed
+	/*d.off += 1 // type
 
-	klen := int(Uint8(d.data[d.off:]))
-	d.off += 1 // name length
+		klen := int(Uint8(d.data[d.off:]))
+		d.off += 1 // name length
 
-	d.off += klen
+		d.off += klen
 
-	val := Int16(d.data[d.off:])
-	d.off += 2 // value
+		val := Int16(d.data[d.off:])
+		//d.off += 2 // value
+	    // unsupported in libmcpack, int32 employed
+	    d.off += 4
 
-	v.SetInt(int64(val))
+		v.SetInt(int64(val))*/
+
+	d.int32(v)
 }
 
 func (d *decodeState) int16Interface() interface{} {
-	d.off += 1 // type
+	// unsupported in libmcpack, int32 employed
+	/*d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
@@ -465,26 +482,34 @@ func (d *decodeState) int16Interface() interface{} {
 	val := Int16(d.data[d.off:])
 	d.off += 2 // value
 
-	return val
+	return val*/
+
+	return d.int32Interface()
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(2)
 func (d *decodeState) uint16(v reflect.Value) {
-	d.off += 1 // type
+	// unsupported in libmcpack, uint32 employed
+	/*d.off += 1 // type
 
-	klen := int(Uint8(d.data[d.off:]))
-	d.off += 1 // name length
+		klen := int(Uint8(d.data[d.off:]))
+		d.off += 1 // name length
 
-	d.off += klen
+		d.off += klen
 
-	val := Uint16(d.data[d.off:])
-	d.off += 2 // value
+		val := Uint16(d.data[d.off:])
+		//d.off += 2 // value
+	    // unsupported in libmcpack, int32 employed
+	    d.off += 4
 
-	v.SetUint(uint64(val))
+		v.SetUint(uint64(val))*/
+
+	d.uint32(v)
 }
 
 func (d *decodeState) uint16Interface() interface{} {
-	d.off += 1 // type
+	// unsupported in libmcpack, uint32 employed
+	/*d.off += 1 // type
 
 	klen := int(Uint8(d.data[d.off:]))
 	d.off += 1 // name length
@@ -494,7 +519,9 @@ func (d *decodeState) uint16Interface() interface{} {
 	val := Uint16(d.data[d.off:])
 	d.off += 2 // value
 
-	return val
+	return val*/
+
+	return d.uint32Interface()
 }
 
 // type(1) | name length(1) | raw name bytes | 0x00 | value bytes(4)

@@ -92,12 +92,12 @@ var marshalTests = []marshalTest{
 }
 
 func getTestslongVItemW() marshalTest {
-	out := []byte{MCPACKV2_OBJECT, 0, 0x3e, 0x1, 0, 0,
+	out := []byte{MCPACKV2_OBJECT, 0, 0x40, 0x1, 0, 0,
 		2, 0, 0, 0,
 		MCPACKV2_STRING, 2, 0x2c, 0x1, 0, 0, 'S', 0,
 	}
 	out = append(out, longVItem[:]...)
-	out = append(out, 0, MCPACKV2_INT16, 2, 'V', 0, 1, 0)
+	out = append(out, 0, MCPACKV2_INT32, 2, 'V', 0, 1, 0, 0, 0)
 	return marshalTest{
 		in:  &W{S: string(longVItem[:]), V: 1},
 		out: out,
@@ -112,7 +112,7 @@ func getTestsKeyBoundaryX() marshalTest {
 	deta := [2]int16{-18, -22}
 	in := &X{Beta: beta, Deta: deta}
 
-	out := []byte{MCPACKV2_OBJECT, 0, 0x2f, 0x1, 0, 0, //header
+	out := []byte{MCPACKV2_OBJECT, 0, 0x33, 0x1, 0, 0, //header
 		2, 0, 0, 0,
 		MCPACKV2_OBJECT, 5, 0x9, 0x1, 0, 0, //map
 		'B', 'e', 't', 'a', 0, //key: Beta | 0x0
@@ -121,10 +121,10 @@ func getTestsKeyBoundaryX() marshalTest {
 	out = append(out, longVItem[:254]...)
 	out = append(out, 0, 'S', 'V', 0)
 	//Deta
-	out = append(out, MCPACKV2_ARRAY, 5, 0xc, 0, 0, 0,
+	out = append(out, MCPACKV2_ARRAY, 5, 0x10, 0, 0, 0,
 		'D', 'e', 't', 'a', 0,
 		2, 0, 0, 0,
-		MCPACKV2_INT16, 0, 0xee, 0xff, MCPACKV2_INT16, 0, 0xea, 0xff)
+		MCPACKV2_INT32, 0, 0xee, 0xff, 0xff, 0xff, MCPACKV2_INT32, 0, 0xea, 0xff, 0xff, 0xff)
 
 	return marshalTest{
 		in:  in,
