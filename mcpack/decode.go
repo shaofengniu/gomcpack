@@ -919,7 +919,7 @@ func (d *decodeState) array(v reflect.Value) {
 	if n < v.Len() {
 		if v.Kind() == reflect.Array {
 			z := reflect.Zero(v.Type().Elem())
-			for i := 0; i < v.Len(); i++ {
+			for i := n; i < v.Len(); i++ {
 				v.Index(i).Set(z)
 			}
 		}
